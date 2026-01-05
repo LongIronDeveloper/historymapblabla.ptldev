@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bản Đồ Khởi Nghĩa Lam Sơn - Tactical Editor v4</title>
+    
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/@turf/turf/turf.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* CSS Styling */
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; font-family: 'Roboto', sans-serif; }
+        
+        #map { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; background: #e0d5b0; }
+
+        /* --- SIDEBAR --- */
+        #sidebar {
+            width: 360px;
+            height: 100vh;
+            background: #2b2b2b;
+            color: #dcdcdc;
+            padding: 15px;
+            box-sizing: border-box;
+            transition: transform 0.3s ease;
+            position: absolute;
+            z-index: 1000;
+            left: 0; top: 0;
+            overflow-y: auto;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.6);
+            border-right: 3px solid #8b4513;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        #sidebar.collapsed { transform: translateX(-370px); }
+
+        /* Headers */
+        h2 { 
+            margin: 0; font-family: 'Cinzel', serif; font-size: 20px; 
+            text-align: center; color: #f39c12; 
+            border-bottom: 2px solid #8b4513; padding-bottom: 10px; 
+            text-shadow: 1px 1px 2px black;
+        }
+        h3 { margin: 0; border-bottom: 1px solid #555; padding-bottom: 5px; font-size: 14px; color: #f1c40f; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Controls */
+        .control-group { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 6px; border: 1px solid #444; }
+        .control-group label { display: block; margin-bottom: 5px; font-size: 13px; color: #aaa; }
+        
+        input, select, button { width: 100%; margin-bottom: 8px; padding: 8px; border-radius: 4px; border: 1px solid #555; background: #3c3c3c; color: white; font-size: 13px; }
+        input[type="checkbox"] { width: auto; margin-right: 5px; vertical-align: middle; }
+        
+        button.btn-action { background: #5d4037; font-weight: bold; border: 1px solid #8d6e63; cursor: pointer; color: #f1c40f; }
+        button.btn-action:hover { background: #795548; }
+
+        /* Icon Grid */
+        .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .icon-option { background: #4a3b32; border: 1px solid #6d4c41; padding: 8px; text-align: center; cursor: pointer; border-radius: 4px; }
+        .icon-option.selected { background: #f1c40f; color: #2c3e50; border-color: #fff; box-shadow: 0 0 8px #f1c40f; }
+        
+        /* Help Box */
+        .help-box { font-size: 12px; color: #bdc3c7; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; line-height: 1.5; border-left: 3px solid #e74c3c; }
+        .help-key { display: inline-block; background: #eee; color: #333; padding: 0 4px; border-radius: 2px; font-weight: bold; font-family: monospace; font-size: 10px; }
+
+        /* Nút Toggle */
+        #toggle-btn, #label-toggle-btn {
+            position: absolute; width: 36px; height: 36px; z-index: 2000;
+            background: #8b4513; color: white; border: 2px solid #d35400; cursor: pointer; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+        #toggle-btn { top: 15px; left: 370px; transition: left 0.3s; } /* Nằm cạnh sidebar */
+        #sidebar.collapsed + #toggle-btn { left: 15px; }
+        
+        #label-toggle-btn { top: 15px; right: 15px; background: #2c3e50; border-color: #34495e; }
+        
+        /* Timeline Table */
+        .timeline-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+        .timeline-table td { padding: 4px; border-bottom: 1px solid #444; }
+
+        /* --- NEW FLOATING LEGEND (Góc phải dưới) --- */
+        #floating-legend {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 300px; max-height: 50vh;
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid #8b4513;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+            z-index: 2000;
+            overflow-y: auto;
+            color: #333;
+            font-family: 'Merriweather', serif;
+            transition: transform 0.3s;
+        }
+        #floating-legend.minimized { transform: translateY(calc(100% - 30px)); }
+        
+        .legend-header {
+            background: #8b4513; color: #f1c40f; padding: 8px; font-weight: bold;
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+            font-size: 13px; text-transform: uppercase;
+        }
+        .legend-body { padding: 5px; }
+        
+        .legend-row { display: flex; align-items: center; gap: 10px; padding: 5px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
+        .legend-row:hover { background: #f0e6d2; }
+        .l-icon { width: 30px; text-align: center; display: flex; justify-content: center; align-items: center; }
+        .l-text { flex: 1; font-size: 12px; line-height: 1.3; }
+        
+        /* Map Feature Styles */
+        .map-feature i { filter: sepia(0.4) drop-shadow(0px 2px 2px rgba(0,0,0,0.8)); }
+        .custom-text-marker { text-shadow: 1px 1px 0 #000; }
+
+    </style>
+</head>
+<body>
+
+    <button id="toggle-btn" onclick="toggleSidebar()" title="Đóng/Mở Sidebar"><i class="fas fa-bars"></i></button>
+    <button id="label-toggle-btn" onclick="toggleMapLabels()" title="Ẩn/Hiện Tên Địa Danh"><i class="fas fa-font"></i></button>
+
+    <div id="sidebar">
+        <h2>KHỞI NGHĨA LAM SƠN</h2>
+
+        <div class="control-group">
+            <h3><i class="fas fa-info-circle"></i> Hướng Dẫn Sử Dụng</h3>
+            <div class="help-box">
+                <b>1. Vẽ Mũi Tên:</b> Click chuột để tạo các điểm uốn, click đúp để kết thúc. Giữ <span class="help-key">Z</span> để bẻ cong dây.<br>
+                <b>2. Vẽ Vùng:</b> Click tạo đường bao quanh, click đúp để đóng vùng. Chọn "Làm mềm" để vùng tròn trịa hơn.<br>
+                <b>3. Xoay Mũi Tên:</b> Click vào đầu mũi tên (nháy vàng), nhấn <span class="help-key">A</span> (trái) / <span class="help-key">D</span> (phải).<br>
+                <b>4. Timeline:</b> Dùng nút T/Y để tái hiện diễn biến trận đánh (chỉ áp dụng cho mũi tên).<br>
+                <b>* Mẹo:</b> Click vào mục trong Bảng Chú Thích để chọn nhanh bút vẽ.
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Công Cụ Chiến Thuật</h3>
+            <select id="draw-mode" onchange="updateUI()">
+                <option value="none">-- Chọn Chế Độ --</option>
+                <option value="arrow">Mũi Tên (Chiến dịch)</option>
+                <option value="marker">Biểu Tượng (Icon)</option>
+                <option value="text">Văn Bản (Ghi chú)</option>
+                <option value="polygon">Vùng Hoạt Động</option>
+            </select>
+            <button class="btn-action" id="action-btn" onclick="toggleDrawing()">Bắt đầu vẽ</button>
+        </div>
+
+        <div id="options-panel">
+            <div class="control-group">
+                <label>Thuộc tính chung:</label>
+                <div style="display:flex; gap:5px; align-items:center;">
+                    <input type="color" id="draw-color" value="#c0392b" style="width:40px; height:30px; padding:0;">
+                    <input type="number" id="draw-size" value="4" min="1" max="20" title="Kích thước" style="width:50px;">
+                </div>
+                
+                <div id="arrow-specific-options" style="display:none; margin-top:5px;">
+                     <label><input type="checkbox" id="draw-dashed"> Nét đứt (Rút lui/Bí mật)</label>
+                </div>
+
+                <div id="polygon-specific-options" style="display:none; margin-top:5px;">
+                    <label><input type="checkbox" id="poly-smooth" checked> Làm mềm (Bo tròn)</label>
+                    <label><input type="checkbox" id="poly-dashed"> Viền nét đứt</label>
+                    <div style="font-size:10px; color:#aaa; margin-top:2px;">* Làm mềm giúp vùng vẽ tự nhiên hơn</div>
+                </div>
+
+                <input type="text" id="draw-label" placeholder="Tên (Hiển thị trong timeline)..." style="margin-top:5px;">
+            </div>
+
+            <div class="control-group" id="icon-options" style="display:none;">
+                <label>Biểu tượng:</label>
+                <div class="icon-grid">
+                    <div class="icon-option selected" onclick="selectIcon('fire')" title="Nơi khởi nghĩa"><i class="fas fa-fire" style="color:#e67e22"></i></div>
+                    <div class="icon-option" onclick="selectIcon('flag')" title="Sở chỉ huy"><i class="fas fa-flag" style="color:#c0392b"></i></div>
+                    <div class="icon-option" onclick="selectIcon('star')" title="Chiến thắng"><i class="fas fa-star" style="color:#f1c40f"></i></div>
+                    <div class="icon-option" onclick="selectIcon('chess-rook')" title="Thành trì"><i class="fas fa-chess-rook" style="color:#7f8c8d"></i></div>
+                    <div class="icon-option" onclick="selectIcon('skull')" title="Tiêu diệt"><i class="fas fa-skull" style="color:#fff"></i></div>
+                    <div class="icon-option" onclick="selectIcon('campground')" title="Doanh trại"><i class="fas fa-campground" style="color:#27ae60"></i></div>
+                </div>
+            </div>
+
+            <div class="control-group" id="text-options" style="display:none;">
+                <input type="text" id="text-content" placeholder="Nội dung chữ...">
+                <select id="text-font">
+                    <option value="'Merriweather', serif">Merriweather (Cổ điển)</option>
+                    <option value="'Roboto', sans-serif">Roboto (Hiện đại)</option>
+                </select>
+                <div style="display:flex; gap:10px;">
+                    <label><input type="checkbox" id="text-bold" checked> Đậm</label>
+                    <label><input type="checkbox" id="text-italic"> Nghiêng</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Diễn Biến (Mũi Tên)</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                <span id="current-step-display" style="font-size:13px; font-weight:bold; color:#f1c40f;">Hiện tất cả</span>
+                <div>
+                    <button onclick="changeTimeline(-1)" style="width:30px; margin:0;" title="Lùi (Y)">Y</button>
+                    <button onclick="changeTimeline(1)" style="width:30px; margin:0;" title="Tiến (T)">T</button>
+                </div>
+            </div>
+            <div style="max-height: 120px; overflow-y: auto; background: rgba(0,0,0,0.2);">
+                <table class="timeline-table">
+                    <tbody id="timeline-list"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <div class="control-group" style="margin-top:auto;">
+             <button class="btn-action" onclick="exportJSON()">Lưu Bản Đồ (JSON)</button>
+             <input type="file" id="file-input" style="display: none;" onchange="importJSON(this)">
+             <button class="btn-action" style="background:#333; margin-top:5px;" onclick="document.getElementById('file-input').click()">Mở Bản Đồ</button>
+        </div>
+    </div>
+
+    <div id="floating-legend">
+        <div class="legend-header" onclick="toggleLegend()">
+            <span><i class="fas fa-map"></i> Chú Giải</span>
+            <i class="fas fa-chevron-down" id="legend-icon"></i>
+        </div>
+        <div class="legend-body" id="static-legend-container">
+            </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        // --- 1. CẤU HÌNH BẢN ĐỒ ---
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json', 
+            center: [105.4, 19.3], // Focus vào Nghệ An - Thanh Hóa
+            zoom: 7.2,
+            pitch: 0,
+            antialias: true
+        });
+
+        // --- 2. GLOBAL VARIABLES ---
+        let mapData = { features: [] };
+        let isDrawing = false;
+        let currentDrawType = 'none';
+        let currentPoints = [];
+        let tempId = 'temp-layer';
+        
+        let selectedIcon = 'fire';
+        let selectedArrowHead = null;
+        let selectedLineId = null; 
+        let isBending = false;
+        let currentTimelineStep = 999;
+        let arrowCounter = 0;
+
+        // --- 3. KHỞI TẠO ---
+        map.on('load', () => {
+            // Viền VN Đậm
+            map.addSource('vietnam-border', { type: 'geojson', data: 'https://raw.githubusercontent.com/vietnam-geospatial/vietnam-administrative-boundaries/master/vietnam_boundary.geojson' });
+            map.addLayer({ id: 'vn-border-halo', type: 'line', source: 'vietnam-border', paint: { 'line-color': '#f1c40f', 'line-width': 6, 'line-opacity': 0.4 } });
+            map.addLayer({ id: 'vn-border-line', type: 'line', source: 'vietnam-border', paint: { 'line-color': '#8b4513', 'line-width': 2 } });
+
+            createStaticLegend();
+        });
+
+        // Tạo bảng chú giải cứng (Cập nhật đầy đủ 3 vùng hoạt động)
+        function createStaticLegend() {
+            const container = document.getElementById('static-legend-container');
+            const items = [
+                { icon: '<i class="fas fa-fire" style="color:#e67e22"></i>', text: 'Nơi Lê Lợi dựng cờ', type: 'marker', color: '#e67e22', iconName: 'fire' },
+                { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#c0392b; transform: rotate(-45deg);"></i>', text: 'Hướng tiến nghĩa quân', type: 'arrow', color: '#c0392b', dashed: false },
+                { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#c0392b; border-bottom:2px dashed #c0392b;"></i>', text: 'Nghĩa quân rút/bí mật', type: 'arrow', color: '#c0392b', dashed: true },
+                { icon: '<i class="fas fa-star" style="color:#f1c40f"></i>', text: 'Nơi đánh bại quân Minh', type: 'marker', color: '#f1c40f', iconName: 'star' },
+                { icon: '<i class="fas fa-chess-rook" style="color:#7f8c8d"></i>', text: 'Thành quân Minh bị vây', type: 'marker', color: '#7f8c8d', iconName: 'chess-rook' },
+                { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#2980b9; border-bottom:2px dashed #2980b9;"></i>', text: 'Quân Minh rút chạy', type: 'arrow', color: '#2980b9', dashed: true },
+                // 3 Vùng hoạt động như trong hình
+                { icon: '<div style="width:14px;height:14px;background:#eab676;opacity:0.8;border:1px solid #d35400"></div>', text: 'Vùng hoạt động 1418-1423', type: 'polygon', color: '#eab676', dashed: false },
+                { icon: '<div style="width:14px;height:14px;background:#a2d9a2;opacity:0.8;border:1px solid #27ae60"></div>', text: 'Vùng giải phóng 1424-1425', type: 'polygon', color: '#a2d9a2', dashed: false },
+                { icon: '<div style="width:14px;height:14px;background:#c3e6cb;opacity:0.8;border:1px solid #2ecc71"></div>', text: 'Vùng giải phóng 1426-1427', type: 'polygon', color: '#c3e6cb', dashed: false },
+                { icon: '<div style="width:20px;height:0px;border-top:2px dashed #000;"></div>', text: 'Biên giới quốc gia', type: 'none', color: '#000' }
+            ];
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'legend-row';
+                div.innerHTML = `<div class="l-icon">${item.icon}</div><div class="l-text">${item.text}</div>`;
+                if(item.type !== 'none') {
+                    div.title = "Click để chọn vẽ loại này";
+                    div.onclick = () => {
+                        document.getElementById('draw-mode').value = item.type;
+                        document.getElementById('draw-color').value = item.color;
+                        
+                        if(item.type === 'arrow') document.getElementById('draw-dashed').checked = item.dashed;
+                        if(item.type === 'marker') selectIcon(item.iconName);
+                        
+                        updateUI();
+                        if(!isDrawing) toggleDrawing();
+                    };
+                }
+                container.appendChild(div);
+            });
+        }
+
+        function toggleLegend() {
+            const leg = document.getElementById('floating-legend');
+            const icon = document.getElementById('legend-icon');
+            leg.classList.toggle('minimized');
+            icon.className = leg.classList.contains('minimized') ? "fas fa-chevron-up" : "fas fa-chevron-down";
+        }
+
+        // --- 4. TÍNH NĂNG ẨN/HIỆN LABEL (Cập nhật logic) ---
+        let labelsVisible = true;
+        function toggleMapLabels() {
+            labelsVisible = !labelsVisible;
+            const btn = document.getElementById('label-toggle-btn');
+            btn.innerHTML = labelsVisible ? '<i class="fas fa-font"></i>' : '<i class="fas fa-slash"></i>';
+            btn.style.color = labelsVisible ? 'white' : '#aaa';
+
+            const layers = map.getStyle().layers;
+            layers.forEach(layer => {
+                // Kiểm tra các layer chứa text/label/place/poi
+                if (layer.type === 'symbol' || layer.id.includes('label') || layer.id.includes('place') || layer.id.includes('poi')) {
+                    map.setLayoutProperty(layer.id, 'visibility', labelsVisible ? 'visible' : 'none');
+                }
+            });
+        }
+
+        // --- 5. LOGIC VẼ (CẬP NHẬT POLYGON) ---
+        function toggleDrawing() {
+            isDrawing = !isDrawing;
+            const btn = document.getElementById('action-btn');
+            if(isDrawing) {
+                btn.innerText = "DỪNG VẼ (ESC)"; btn.style.background = "#c0392b"; btn.style.color = "white";
+                map.getCanvas().style.cursor = 'crosshair';
+                currentDrawType = document.getElementById('draw-mode').value;
+            } else {
+                stopDrawing();
+            }
+        }
+
+        function stopDrawing() {
+            isDrawing = false; currentPoints = [];
+            const btn = document.getElementById('action-btn');
+            btn.innerText = "Bắt đầu vẽ"; btn.style.background = "#5d4037"; btn.style.color = "#f1c40f";
+            map.getCanvas().style.cursor = '';
+            if(map.getLayer(tempId)) map.removeLayer(tempId);
+            if(map.getSource(tempId)) map.removeSource(tempId);
+        }
+
+        map.on('click', (e) => {
+            if (!isDrawing) {
+                // Select line logic (giữ nguyên)
+                const features = map.queryRenderedFeatures(e.point, { layers: mapData.features.filter(f=>f.type==='arrow').map(f=>f.id) });
+                if (features.length > 0) {
+                    selectedLineId = features[0].layer.id;
+                    new maplibregl.Popup().setLngLat(e.lngLat).setHTML('<div style="color:#333; font-size:11px;"><b>Đã chọn mũi tên</b><br>Giữ <b>Z</b> + Di chuột để uốn cong.</div>').addTo(map);
+                }
+                return;
+            }
+
+            const color = document.getElementById('draw-color').value;
+            const size = document.getElementById('draw-size').value;
+            const label = document.getElementById('draw-label').value;
+
+            if (currentDrawType === 'marker') {
+                const id = 'marker-' + Date.now();
+                addIconMarker(e.lngLat, selectedIcon, color, size, label, id);
+                saveFeature(id, 'marker', {lng: e.lngLat.lng, lat: e.lngLat.lat, icon: selectedIcon}, {color, size}, label, 0);
+            }
+            else if (currentDrawType === 'text') {
+                const text = document.getElementById('text-content').value || "Địa danh";
+                const font = document.getElementById('text-font').value;
+                const isBold = document.getElementById('text-bold').checked;
+                const isItalic = document.getElementById('text-italic').checked;
+                const id = 'text-' + Date.now();
+                addTextMarker(e.lngLat, text, color, size, font, isBold, isItalic, id);
+                saveFeature(id, 'text', {lng: e.lngLat.lng, lat: e.lngLat.lat, text}, {color, size, font, isBold, isItalic}, label, 0);
+            }
+            else if (currentDrawType === 'arrow' || currentDrawType === 'polygon') {
+                currentPoints.push([e.lngLat.lng, e.lngLat.lat]);
+                updateTempLayer(currentDrawType === 'arrow' ? 'line' : 'fill');
+            }
+        });
+
+        // KẾT THÚC VẼ (Double Click)
+        map.on('dblclick', (e) => {
+            if(!isDrawing) return;
+            e.preventDefault();
+
+            const color = document.getElementById('draw-color').value;
+            const size = document.getElementById('draw-size').value;
+            let label = document.getElementById('draw-label').value;
+
+            // ARROW
+            if (currentDrawType === 'arrow' && currentPoints.length > 1) {
+                arrowCounter++;
+                if(!label) label = `Mũi tiến công ${arrowCounter}`;
+                const dashed = document.getElementById('draw-dashed').checked;
+                const id = 'arrow-' + Date.now();
+                
+                addArrowToMap(currentPoints, color, size, dashed, id, arrowCounter);
+                saveFeature(id, 'arrow', currentPoints, {color, size, dashed}, label, arrowCounter);
+                selectedLineId = id; 
+                stopDrawing();
+            }
+            // POLYGON (Cập nhật logic làm mềm)
+            else if (currentDrawType === 'polygon' && currentPoints.length > 2) {
+                const isSmooth = document.getElementById('poly-smooth').checked;
+                const isDashed = document.getElementById('poly-dashed').checked;
+                const id = 'poly-' + Date.now();
+
+                // Đóng vòng
+                currentPoints.push(currentPoints[0]);
+
+                let finalCoords = currentPoints;
+                // Xử lý làm mềm bằng Turf.js
+                if (isSmooth) {
+                    try {
+                        const line = turf.lineString(currentPoints);
+                        // bezierSpline tạo đường cong qua các điểm
+                        const curved = turf.bezierSpline(line, { resolution: 10000, sharpness: 0.5 });
+                        finalCoords = curved.geometry.coordinates;
+                    } catch (err) { console.log("Lỗi làm mềm polygon, dùng tọa độ gốc"); }
+                }
+
+                addPolygonToMap(finalCoords, color, 0.5, id, isDashed);
+                // Lưu dữ liệu: Lưu smooth flag để sau này import/export biết đường xử lý
+                saveFeature(id, 'polygon', finalCoords, {color, opacity: 0.5, isDashed, isSmooth}, label, 0);
+                stopDrawing();
+            }
+        });
+
+        function updateTempLayer(type) {
+            const data = { type: 'Feature', geometry: { type: type === 'line' ? 'LineString' : 'Polygon', coordinates: type === 'line' ? currentPoints : [currentPoints] } };
+            if (map.getSource(tempId)) { map.getSource(tempId).setData(data); }
+            else {
+                map.addSource(tempId, { type: 'geojson', data: data });
+                const dashed = (type === 'line' && document.getElementById('draw-dashed').checked) || (type === 'fill' && document.getElementById('poly-dashed').checked);
+                const paint = type === 'line' 
+                    ? { 'line-color': '#c0392b', 'line-width': 3, 'line-dasharray': dashed ? [2, 2] : [1, 0] }
+                    : { 'fill-color': '#333', 'fill-opacity': 0.3 };
+                map.addLayer({ id: tempId, type: type, source: tempId, paint: paint });
+            }
+        }
+
+        // --- 6. RENDER FUNCTIONS ---
+        function addArrowToMap(coords, color, size, dashed, id, order) {
+            map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } } });
+            map.addLayer({
+                id: id, type: 'line', source: id,
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: { 'line-color': color, 'line-width': parseInt(size), 'line-dasharray': dashed ? [2, 2] : [1, 0] }
+            });
+            
+            const last = coords[coords.length - 1];
+            const prev = coords[coords.length - 2];
+            let bearing = turf.bearing(turf.point(prev), turf.point(last));
+            const headSize = parseInt(size) * 6;
+            
+            const el = document.createElement('div');
+            el.className = `map-feature feature-arrow arrow-order-${order}`;
+            el.id = id + '-head';
+            el.innerHTML = `<i class="fas fa-long-arrow-alt-up" style="color: ${color}; font-size: ${headSize}px; display:block; text-shadow:0 0 2px white;"></i>`;
+            el.style.cursor = 'pointer';
+            el.querySelector('i').style.transform = `rotate(${bearing}deg)`;
+
+            const marker = new maplibregl.Marker({ element: el }).setLngLat(last).addTo(map);
+
+            el.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if(selectedArrowHead) selectedArrowHead.element.style.outline = 'none';
+                selectedArrowHead = { marker: marker, element: el, bearing: bearing };
+                el.style.borderRadius = "50%"; el.style.outline = "2px dashed #f1c40f";
+            });
+        }
+
+        function addPolygonToMap(coords, color, opacity, id, isDashed) {
+            map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } } });
+            // Fill layer
+            map.addLayer({
+                id: id + '-fill', type: 'fill', source: id,
+                paint: { 'fill-color': color, 'fill-opacity': opacity }
+            });
+            // Outline layer (để hiển thị nét đứt nếu cần)
+            map.addLayer({
+                id: id + '-outline', type: 'line', source: id,
+                paint: { 
+                    'line-color': color, 
+                    'line-width': 2,
+                    'line-dasharray': isDashed ? [2, 2] : [1, 0]
+                }
+            });
+        }
+
+        function addIconMarker(lngLat, icon, color, size, label, id) {
+            const el = document.createElement('div');
+            el.className = `map-feature`; el.id = id;
+            const px = parseInt(size) * 8; 
+            el.innerHTML = `<i class="fas fa-${icon}" style="color:${color}; font-size:${px}px; text-shadow: 1px 1px 1px black;"></i>`;
+            new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
+        }
+
+        function addTextMarker(lngLat, text, color, size, font, bold, italic, id) {
+            const el = document.createElement('div');
+            el.className = `custom-text-marker`; el.id = id;
+            el.style.color = color; el.style.fontSize = (parseInt(size) * 5) + 'px';
+            el.style.fontFamily = font; el.style.fontWeight = bold ? 'bold' : 'normal'; el.style.fontStyle = italic ? 'italic' : 'normal';
+            el.innerText = text;
+            new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
+        }
+
+        // --- 7. HELPER FUNCTIONS ---
+        // Phím tắt
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'z' || e.key === 'Z') isBending = true;
+            if (e.key === 'Escape') stopDrawing();
+            if (e.key.toLowerCase() === 't') changeTimeline(1);
+            if (e.key.toLowerCase() === 'y') changeTimeline(-1);
+            if (selectedArrowHead) {
+                if (e.key.toLowerCase() === 'a') { selectedArrowHead.bearing -= 5; updateArrowHeadRotation(); }
+                if (e.key.toLowerCase() === 'd') { selectedArrowHead.bearing += 5; updateArrowHeadRotation(); }
+            }
+        });
+        document.addEventListener('keyup', (e) => { if (e.key === 'z' || e.key === 'Z') isBending = false; });
+
+        function updateArrowHeadRotation() {
+            if(!selectedArrowHead) return;
+            selectedArrowHead.element.querySelector('i').style.transform = `rotate(${selectedArrowHead.bearing}deg)`;
+        }
+
+        // Bẻ cong line (Mouse move)
+        map.on('mousemove', (e) => {
+            if (isBending && selectedLineId) {
+                const featureObj = mapData.features.find(f => f.id === selectedLineId);
+                if (featureObj && featureObj.type === 'arrow') {
+                    const originalCoords = featureObj.data; 
+                    const start = originalCoords[0];
+                    const end = originalCoords[originalCoords.length - 1];
+                    const mouse = [e.lngLat.lng, e.lngLat.lat];
+                    const line = turf.lineString([start, mouse, end]);
+                    const curved = turf.bezierSpline(line, { resolution: 10000, sharpness: 0.6 });
+                    map.getSource(selectedLineId).setData(curved);
+                }
+            }
+        });
+
+        // Timeline & Data
+        function saveFeature(id, type, data, style, label, order) {
+            mapData.features.push({ id, type, data, style, label, order });
+            renderTimelineTable();
+        }
+        function renderTimelineTable() {
+            const tbody = document.getElementById('timeline-list');
+            tbody.innerHTML = '';
+            const arrows = mapData.features.filter(f => f.type === 'arrow').sort((a,b) => a.order - b.order);
+            arrows.forEach(feat => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td width="20" style="color:#f1c40f; font-weight:bold;">${feat.order}</td><td style="color:${feat.style.color}">${feat.label}</td><td width="20"><i class="fas fa-trash" style="cursor:pointer; color:#e74c3c;" onclick="deleteFeature('${feat.id}')"></i></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+        function deleteFeature(id) {
+            if(!confirm("Xóa đối tượng này?")) return;
+            if(map.getLayer(id)) map.removeLayer(id);
+            if(map.getLayer(id+'-fill')) map.removeLayer(id+'-fill'); // Xóa polygon fill
+            if(map.getLayer(id+'-outline')) map.removeLayer(id+'-outline'); // Xóa polygon outline
+            if(map.getSource(id)) map.removeSource(id);
+            const el = document.getElementById(id); if(el) el.remove();
+            const headEl = document.getElementById(id+'-head'); if(headEl) headEl.remove();
+            mapData.features = mapData.features.filter(f => f.id !== id);
+            renderTimelineTable();
+        }
+        function changeTimeline(val) {
+            if (currentTimelineStep === 999 && val === 1) currentTimelineStep = 0;
+            currentTimelineStep += val;
+            if (currentTimelineStep < 0) currentTimelineStep = 0;
+            if (currentTimelineStep > arrowCounter) currentTimelineStep = 999;
+            document.getElementById('current-step-display').innerText = currentTimelineStep === 999 ? "Hiện tất cả" : `Bước: ${currentTimelineStep}`;
+            mapData.features.forEach(feat => {
+                if (feat.type !== 'arrow') return; 
+                const isVisible = (currentTimelineStep === 999) || (feat.order <= currentTimelineStep);
+                if (map.getLayer(feat.id)) map.setLayoutProperty(feat.id, 'visibility', isVisible ? 'visible' : 'none');
+                const head = document.getElementById(feat.id + '-head');
+                if (head) head.style.display = isVisible ? 'block' : 'none';
+            });
+        }
+
+        // Utils
+        function selectIcon(name) { selectedIcon = name; document.querySelectorAll('.icon-option').forEach(el=>el.classList.remove('selected')); event.currentTarget.classList.add('selected'); }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+        function updateUI() {
+            const mode = document.getElementById('draw-mode').value;
+            document.getElementById('options-panel').style.display = mode === 'none' ? 'none' : 'block';
+            document.getElementById('icon-options').style.display = mode === 'marker' ? 'block' : 'none';
+            document.getElementById('text-options').style.display = mode === 'text' ? 'block' : 'none';
+            document.getElementById('arrow-specific-options').style.display = mode === 'arrow' ? 'block' : 'none';
+            document.getElementById('polygon-specific-options').style.display = mode === 'polygon' ? 'block' : 'none';
+        }
+        function exportJSON() {
+            const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"});
+            const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "lamson_map_v4.json"; link.click();
+        }
+        function importJSON(input) { alert("Chức năng Import đang được bảo trì trong phiên bản 4.0"); }
+
+    </script>
+</body>
+</html>

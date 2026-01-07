@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v10 (Final Legend & Fix)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v10.1 (Fix Toggle)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -29,6 +29,7 @@
             border-right: 3px solid #8b4513;
             display: flex; flex-direction: column; gap: 12px;
         }
+        /* Class ẩn sidebar */
         #sidebar.collapsed { transform: translateX(-370px); }
 
         h2 { margin: 0; font-family: 'Cinzel', serif; font-size: 22px; text-align: center; color: #f39c12; border-bottom: 2px solid #8b4513; padding-bottom: 10px; text-shadow: 1px 1px 2px black; letter-spacing: 1px; }
@@ -52,7 +53,9 @@
         .help-key { display: inline-block; background: #eee; color: #333; padding: 0 4px; border-radius: 2px; font-weight: bold; font-family: monospace; font-size: 10px; }
 
         .top-right-controls {
-            position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 5px; z-index: 2000;
+            position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 5px; 
+            z-index: 9999; /* Đảm bảo nằm trên cùng */
+            pointer-events: auto; /* Đảm bảo nhận click */
         }
 
         #toggle-btn, #label-toggle-btn {
@@ -71,7 +74,7 @@
 
         #floating-legend {
             position: absolute; bottom: 20px; right: 20px;
-            width: 350px; /* Tăng chiều rộng để chứa text dài */
+            width: 350px; 
             max-height: 60vh;
             background: rgba(255, 255, 255, 0.98);
             border: 2px solid #8b4513; border-radius: 5px;
@@ -112,8 +115,6 @@
         .btn-secondary { background: #ccc; color: black; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; width: auto; }
         .selected-danger { outline: 3px dashed red !important; border-radius: 4px; box-shadow: 0 0 10px red; background: rgba(255, 0, 0, 0.2); }
 
-        /* FIXED VISUAL EFFECTS */
-        /* Important: Removed 'transform' & 'transition' from the marker class to fix the drifting bug */
         .feature-dimmed i {
             filter: grayscale(100%) brightness(0.3) opacity(0.4) !important;
             transition: filter 0.3s ease;
@@ -123,8 +124,8 @@
 <body>
 
     <div class="top-right-controls">
-        <button id="toggle-btn" onclick="toggleSidebar()" title="Đóng/Mở Bảng Công Cụ"><i class="fas fa-bars"></i></button>
-        <button id="label-toggle-btn" onclick="toggleMapLabels()" title="Ẩn/Hiện Tên Địa Danh"><i class="fas fa-font"></i></button>
+        <button id="toggle-btn" title="Đóng/Mở Bảng Công Cụ"><i class="fas fa-bars"></i></button>
+        <button id="label-toggle-btn" title="Ẩn/Hiện Tên Địa Danh"><i class="fas fa-font"></i></button>
     </div>
 
     <div id="sidebar">
@@ -293,6 +294,16 @@
             map.addLayer({ id: 'vn-border-halo', type: 'line', source: 'vietnam-border', paint: { 'line-color': '#f1c40f', 'line-width': 6, 'line-opacity': 0.4 } });
             map.addLayer({ id: 'vn-border-line', type: 'line', source: 'vietnam-border', paint: { 'line-color': '#8b4513', 'line-width': 2 } });
             createStaticLegend();
+            
+            // --- FIX BUTTONS: Gắn sự kiện thủ công để đảm bảo hoạt động ---
+            document.getElementById('toggle-btn').addEventListener('click', function() {
+                const sidebar = document.getElementById('sidebar');
+                sidebar.classList.toggle('collapsed');
+            });
+
+            document.getElementById('label-toggle-btn').addEventListener('click', function() {
+                toggleMapLabels();
+            });
         });
 
         // --- INTERACTION ---
@@ -557,7 +568,6 @@
             el.style.cursor = 'pointer'; 
             el.querySelector('i').style.transform = `rotate(${bearing}deg)`;
             
-            // FIX: pitchAlignment & rotationAlignment 'map' ensures arrows stick to map ground
             const marker = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat(last).addTo(map);
             
             el.addEventListener('click', (e) => {
@@ -569,7 +579,6 @@
             });
         }
 
-        // --- UPDATED LEGEND ---
         function createStaticLegend() {
             const container = document.getElementById('static-legend-container');
             const items = [
@@ -583,8 +592,7 @@
                 { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#2980b9; border-bottom:2px dashed #2980b9;"></i>', text: 'Quân Minh rút chạy', type: 'arrow', color: '#2980b9', dashed: true },
                 { icon: '<div style="width:14px;height:14px;background:#eab676;opacity:0.8;border:1px solid #d35400"></div>', text: 'Vùng hoạt động 1418-1423', type: 'polygon', color: '#eab676', dashed: false },
                 { icon: '<div style="width:14px;height:14px;background:#a2d9a2;opacity:0.8;border:1px solid #27ae60"></div>', text: 'Vùng giải phóng 1424-1425', type: 'polygon', color: '#a2d9a2', dashed: false },
-                /* NEW ITEM ADDED HERE */
-                { icon: '<div style="width:14px;height:14px;background:#c3e6cb;opacity:0.8;border:1px solid #2ecc71"></div>', text: 'Vùng giải phóng 1426-1427', type: 'polygon', color: '#c3e6cb', dashed: false },
+                { icon: '<div style="width:14px;height:14px;background:#c3e6cb;opacity:0.8;border:1px solid #2ecc71"></div>', text: 'Khu vực được nghĩa quân giải phóng 1426-1427', type: 'polygon', color: '#c3e6cb', dashed: false },
                 { icon: '<div style="width:20px;height:0px;border-top:2px dashed #000;"></div>', text: 'Biên giới quốc gia', type: 'none', color: '#000' }
             ];
             items.forEach(item => {

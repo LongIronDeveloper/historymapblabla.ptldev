@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v10.1 (Fix Toggle)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v13 (Edit & Layers)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -29,7 +29,6 @@
             border-right: 3px solid #8b4513;
             display: flex; flex-direction: column; gap: 12px;
         }
-        /* Class ẩn sidebar */
         #sidebar.collapsed { transform: translateX(-370px); }
 
         h2 { margin: 0; font-family: 'Cinzel', serif; font-size: 22px; text-align: center; color: #f39c12; border-bottom: 2px solid #8b4513; padding-bottom: 10px; text-shadow: 1px 1px 2px black; letter-spacing: 1px; }
@@ -54,8 +53,7 @@
 
         .top-right-controls {
             position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 5px; 
-            z-index: 9999; /* Đảm bảo nằm trên cùng */
-            pointer-events: auto; /* Đảm bảo nhận click */
+            z-index: 9999; pointer-events: auto;
         }
 
         #toggle-btn, #label-toggle-btn {
@@ -74,8 +72,7 @@
 
         #floating-legend {
             position: absolute; bottom: 20px; right: 20px;
-            width: 350px; 
-            max-height: 60vh;
+            width: 350px; max-height: 60vh;
             background: rgba(255, 255, 255, 0.98);
             border: 2px solid #8b4513; border-radius: 5px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 2000;
@@ -98,7 +95,6 @@
         .l-text { flex: 1; font-size: 11px; line-height: 1.3; font-weight: bold; color: #555; }
         
         .map-feature i { filter: sepia(0.4) drop-shadow(0px 2px 2px rgba(0,0,0,0.8)); }
-        .custom-text-marker { text-shadow: 1px 1px 0 #000; }
         .bend-popup { font-size: 11px; color: #333; }
 
         .modal-overlay {
@@ -113,11 +109,29 @@
         .modal-buttons { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
         .btn-danger { background: #d9534f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; width: auto; }
         .btn-secondary { background: #ccc; color: black; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; width: auto; }
+        
+        /* Hiệu ứng chọn để sửa */
+        .selected-edit { outline: 3px dashed #00b894 !important; box-shadow: 0 0 15px #00b894; }
         .selected-danger { outline: 3px dashed red !important; border-radius: 4px; box-shadow: 0 0 10px red; background: rgba(255, 0, 0, 0.2); }
 
         .feature-dimmed i {
             filter: grayscale(100%) brightness(0.3) opacity(0.4) !important;
             transition: filter 0.3s ease;
+        }
+
+        .map-feature {
+            position: absolute; top: 0; left: 0;
+            display: flex; justify-content: center; align-items: center;
+            transform: translate(-50%, -50%); 
+            pointer-events: auto;
+        }
+
+        .custom-text-marker { 
+            position: absolute; top: 0; left: 0;
+            text-shadow: 1px 1px 0 #000; 
+            white-space: nowrap; 
+            transform: translate(-50%, -50%); 
+            pointer-events: auto; background: transparent;
         }
     </style>
 </head>
@@ -133,12 +147,12 @@
         <div class="control-group">
             <h3><i class="fas fa-info-circle"></i> Hướng Dẫn Sử Dụng</h3>
             <div class="help-box">
-                <b>1. Mũi Tên:</b> Click tạo điểm, click đúp kết thúc. Giữ <span class="help-key">Z</span> di chuột để bẻ cong.<br>
-                <b>2. Vùng (Nét vẽ):</b> Giữ chuột trái và di chuyển. Tích "Tự động đổ màu" để tạo vùng kín.<br>
-                <b>3. Xoay (Icon/Mũi tên):</b> Click chọn -> Nhấn <span class="help-key">A</span> (Trái) / <span class="help-key">D</span> (Phải).<br>
-                <b>4. Gộp nhóm:</b> Sửa số thứ tự trong bảng bên dưới giống nhau để gộp.<br>
-                <b>5. Hiệu ứng (U):</b> Bật chế độ "Làm tối" các bước không chọn để nổi bật bước hiện tại.<br>
-                <b style="color:#e74c3c;">6. Xóa (X):</b> Chọn đối tượng -> Nhấn <span class="help-key">X</span>.
+                <b>1. CHỈNH SỬA:</b> Click vào đối tượng bất kỳ để chọn (Viền xanh). Thay đổi màu/size ở bảng bên dưới sẽ cập nhật ngay.<br>
+                <b>2. XOAY MŨI TÊN:</b> Chọn mũi tên -> Dùng phím <span class="help-key">⬅️</span> <span class="help-key">➡️</span> để xoay toàn bộ.<br>
+                <b>3. XOAY ICON:</b> Chọn icon -> Dùng phím <span class="help-key">A</span> (Trái) / <span class="help-key">D</span> (Phải).<br>
+                <b>4. VẼ VÙNG:</b> Vẽ xong vùng sẽ tự động nằm dưới các lớp khác.<br>
+                <b>5. BẺ CONG:</b> Giữ <span class="help-key">Z</span> + Di chuột (chỉ hoạt động khi không ở chế độ vẽ).<br>
+                <b>6. XÓA:</b> Chọn đối tượng -> Nhấn <span class="help-key">X</span>.
             </div>
         </div>
 
@@ -157,11 +171,11 @@
 
         <div id="options-panel">
             <div class="control-group">
-                <label>Thuộc tính chung:</label>
+                <label>Thuộc tính (Chỉnh sửa đối tượng đang chọn):</label>
                 <div style="display:flex; gap:5px; align-items:center; flex-wrap: wrap;">
-                    <input type="color" id="draw-color" value="#c0392b" style="width:40px; height:30px; padding:0;">
-                    <input type="number" id="draw-size" value="4" min="1" max="20" title="Kích thước đầu mũi tên/Icon" style="width:50px;" placeholder="Size">
-                    <input type="number" id="draw-width" value="4" min="1" max="20" title="Độ dày đường thẳng" style="width:50px;" placeholder="Dày">
+                    <input type="color" id="draw-color" value="#c0392b" style="width:40px; height:30px; padding:0;" oninput="updateSelectedFeatureStyle()">
+                    <input type="number" id="draw-size" value="4" min="1" max="50" title="Kích thước đầu mũi tên/Icon/Chữ" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
+                    <input type="number" id="draw-width" value="4" min="1" max="20" title="Độ dày đường thẳng" style="width:50px;" placeholder="Dày" oninput="updateSelectedFeatureStyle()">
                 </div>
                 <div id="arrow-specific-options" style="display:none; margin-top:5px;">
                      <label><input type="checkbox" id="draw-dashed"> Nét đứt (Rút lui/Bí mật)</label>
@@ -182,7 +196,6 @@
                     <div class="icon-option" onclick="selectIcon('chess-rook')" title="Thành trì"><i class="fas fa-chess-rook" style="color:#7f8c8d"></i></div>
                     <div class="icon-option" onclick="selectIcon('skull')" title="Tiêu diệt"><i class="fas fa-skull" style="color:#fff"></i></div>
                     <div class="icon-option" onclick="selectIcon('campground')" title="Doanh trại"><i class="fas fa-campground" style="color:#27ae60"></i></div>
-                    
                     <div class="icon-option" onclick="selectIcon('mountain')" title="Núi/Địa hình"><i class="fas fa-mountain" style="color:#5d4037"></i></div>
                     <div class="icon-option" onclick="selectIcon('location-arrow')" title="Chặn đánh"><i class="fas fa-location-arrow" style="color:#c0392b"></i></div>
                     <div class="icon-option" onclick="selectIcon('times')" title="Dấu X (Diệt)"><i class="fas fa-times" style="color:#c0392b"></i></div>
@@ -278,29 +291,29 @@
         
         let selectedIcon = 'fire';
         
-        let selectedRotatable = null; 
-        let selectedLineId = null; 
+        let selectedFeatureId = null; // ID của đối tượng đang chọn để sửa
         let isBending = false;
 
         let currentTimelineStep = 999;
         let arrowCounter = 0;
-        let pendingDeleteId = null; 
         let suppressDeleteWarning = false; 
         
         let isGlowingEnabled = false;
 
         map.on('load', () => {
+            // Lớp nền biên giới
             map.addSource('vietnam-border', { type: 'geojson', data: 'https://raw.githubusercontent.com/vietnam-geospatial/vietnam-administrative-boundaries/master/vietnam_boundary.geojson' });
             map.addLayer({ id: 'vn-border-halo', type: 'line', source: 'vietnam-border', paint: { 'line-color': '#f1c40f', 'line-width': 6, 'line-opacity': 0.4 } });
             map.addLayer({ id: 'vn-border-line', type: 'line', source: 'vietnam-border', paint: { 'line-color': '#8b4513', 'line-width': 2 } });
+            
+            // Tạo lớp ngăn cách để đẩy polygon xuống dưới
+            map.addLayer({ id: 'layer-separator', type: 'background', layout: { 'visibility': 'visible' }, paint: { 'background-color': 'rgba(0,0,0,0)' } });
+            
             createStaticLegend();
             
-            // --- FIX BUTTONS: Gắn sự kiện thủ công để đảm bảo hoạt động ---
             document.getElementById('toggle-btn').addEventListener('click', function() {
-                const sidebar = document.getElementById('sidebar');
-                sidebar.classList.toggle('collapsed');
+                document.getElementById('sidebar').classList.toggle('collapsed');
             });
-
             document.getElementById('label-toggle-btn').addEventListener('click', function() {
                 toggleMapLabels();
             });
@@ -316,19 +329,15 @@
                 isDrawing = true; 
                 btn.innerText = "THOÁT CHẾ ĐỘ XÓA (ESC)"; btn.style.background = "#d35400"; btn.style.color = "white";
                 map.getCanvas().style.cursor = 'not-allowed'; 
-                clearDeleteSelection(); 
+                selectFeature(null); // Bỏ chọn khi vào mode xóa
             }
             else if(isDrawing) {
-                if (currentDrawType === 'polygon') {
-                    btn.innerText = "DỪNG VẼ (Thả chuột)"; 
-                    map.getCanvas().style.cursor = 'crosshair';
-                    map.dragPan.disable();
-                } else {
-                    btn.innerText = "DỪNG VẼ (ESC)"; 
-                    map.getCanvas().style.cursor = 'crosshair';
-                    map.dragPan.enable();
-                }
+                btn.innerText = "DỪNG VẼ (ESC)"; 
+                map.getCanvas().style.cursor = 'crosshair';
+                map.dragPan.enable();
+                if (currentDrawType === 'polygon') map.dragPan.disable();
                 btn.style.background = "#c0392b"; btn.style.color = "white";
+                selectFeature(null);
             } else {
                 stopDrawing();
             }
@@ -342,7 +351,6 @@
             map.dragPan.enable();
             if(map.getLayer(tempId)) map.removeLayer(tempId);
             if(map.getSource(tempId)) map.removeSource(tempId);
-            clearDeleteSelection();
         }
 
         map.on('mousedown', (e) => {
@@ -369,18 +377,125 @@
             }
         });
 
-        map.on('zoom', () => {
+        function updateMarkerScales() {
             const currentZoom = map.getZoom();
             const scaleFactor = Math.max(0.5, Math.pow(1.3, currentZoom - 7.2));
-            document.querySelectorAll('.map-feature i, .custom-text-marker').forEach(el => {
-                const parent = el.parentElement;
-                parent.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
+            document.querySelectorAll('.map-feature, .custom-text-marker').forEach(el => {
+                el.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
             });
-        });
+        }
+        map.on('zoom', updateMarkerScales);
+
+        // --- SELECTION & EDITING ---
+        function selectFeature(id) {
+            // Xóa highlight cũ
+            if (selectedFeatureId) {
+                const oldEl = document.getElementById(selectedFeatureId);
+                if (oldEl) oldEl.classList.remove('selected-edit', 'selected-danger');
+                if (selectedFeatureId.startsWith('arrow-') || selectedFeatureId.startsWith('poly-')) {
+                    // Reset paint nếu cần (tuy nhiên ta dùng highlight class cho marker đầu mũi tên)
+                    const head = document.getElementById(selectedFeatureId + '-head');
+                    if(head) head.classList.remove('selected-edit');
+                }
+            }
+
+            selectedFeatureId = id;
+
+            if (id) {
+                const feature = mapData.features.find(f => f.id === id);
+                if (feature) {
+                    // Update Inputs values
+                    document.getElementById('draw-color').value = feature.style.color || '#000000';
+                    document.getElementById('draw-size').value = feature.style.size || 4;
+                    document.getElementById('draw-width').value = feature.style.width || 4;
+                    
+                    // Highlight UI
+                    const el = document.getElementById(id);
+                    if(el) el.classList.add('selected-edit');
+                    const head = document.getElementById(id + '-head');
+                    if(head) head.classList.add('selected-edit');
+                }
+            }
+        }
+
+        // Hàm được gọi khi user thay đổi input màu/size
+        window.updateSelectedFeatureStyle = function() {
+            if (!selectedFeatureId) return;
+            const feature = mapData.features.find(f => f.id === selectedFeatureId);
+            if (!feature) return;
+
+            const color = document.getElementById('draw-color').value;
+            const size = document.getElementById('draw-size').value;
+            const width = document.getElementById('draw-width').value;
+
+            feature.style.color = color;
+            feature.style.size = size;
+            feature.style.width = width;
+
+            // Apply changes visually
+            if (feature.type === 'arrow') {
+                if(map.getLayer(feature.id)) {
+                    map.setPaintProperty(feature.id, 'line-color', color);
+                    map.setPaintProperty(feature.id, 'line-width', parseInt(width));
+                }
+                const head = document.getElementById(feature.id + '-head');
+                if (head) {
+                    const iconSize = parseInt(size) * 6;
+                    head.innerHTML = `<i class="fas fa-long-arrow-alt-up" style="color: ${color}; font-size: ${iconSize}px; display:block; text-shadow:0 0 2px white;"></i>`;
+                    // Giữ nguyên góc xoay
+                    const icon = head.querySelector('i');
+                    // Cần lấy lại bearing cũ nếu có
+                    // Tạm thời reset rotation transform trong HTML, rotation thực tế do logic updateArrowHeadRotation quản lý
+                }
+            } else if (feature.type === 'marker') {
+                const el = document.getElementById(feature.id);
+                if (el) {
+                    const px = parseInt(size) * 8;
+                    el.innerHTML = `<i class="fas fa-${feature.data.icon}" style="color:${color}; font-size:${px}px; text-shadow: 1px 1px 1px black;"></i>`;
+                }
+            } else if (feature.type === 'text') {
+                const el = document.getElementById(feature.id);
+                if (el) {
+                    el.style.color = color;
+                    el.style.fontSize = (parseInt(size) * 5) + 'px';
+                }
+            } else if (feature.type === 'polygon') {
+                if(map.getLayer(feature.id + '-fill')) {
+                    map.setPaintProperty(feature.id + '-fill', 'fill-color', color);
+                }
+                if(map.getLayer(feature.id + '-outline')) {
+                    map.setPaintProperty(feature.id + '-outline', 'line-color', color);
+                }
+            }
+        }
 
         map.on('click', (e) => {
             if (isFreehandDrawing) return;
-            if (!isDrawing) { handleSelectionClick(e); return; }
+            
+            // Xử lý Click chọn để sửa (Nếu không vẽ và không xóa)
+            if (!isDrawing && currentDrawType !== 'delete') {
+                // Check click map features (Arrows, Polygons)
+                const point = e.point;
+                // Check arrow click via Layer query
+                const arrowFeatures = map.queryRenderedFeatures(point, { layers: mapData.features.filter(f=>f.type==='arrow').map(f=>f.id) });
+                if (arrowFeatures.length > 0) {
+                    const id = arrowFeatures[0].layer.id;
+                    selectFeature(id);
+                    return;
+                }
+                // Check Polygon click
+                const polyLayers = mapData.features.filter(f=>f.type==='polygon').map(f=>f.id + '-fill');
+                const polyFeatures = map.queryRenderedFeatures(point, { layers: polyLayers });
+                if (polyFeatures.length > 0) {
+                    const id = polyFeatures[0].layer.id.replace('-fill', '');
+                    selectFeature(id);
+                    return;
+                }
+                // Click vào chỗ trống -> Bỏ chọn
+                selectFeature(null);
+                return;
+            }
+
             if (currentDrawType === 'delete') { handleDeleteSelection(e); return; }
             if (currentDrawType === 'polygon') return;
 
@@ -392,6 +507,7 @@
                 const id = 'marker-' + Date.now();
                 addIconMarker(e.lngLat, selectedIcon, color, size, label, id);
                 saveFeature(id, 'marker', {lng: e.lngLat.lng, lat: e.lngLat.lat, icon: selectedIcon}, {color, size}, label, 0);
+                updateMarkerScales();
             }
             else if (currentDrawType === 'text') {
                 const text = document.getElementById('text-content').value || "Địa danh";
@@ -401,6 +517,7 @@
                 const id = 'text-' + Date.now();
                 addTextMarker(e.lngLat, text, color, size, font, isBold, isItalic, id);
                 saveFeature(id, 'text', {lng: e.lngLat.lng, lat: e.lngLat.lat, text}, {color, size, font, isBold, isItalic}, label, 0);
+                updateMarkerScales();
             }
             else if (currentDrawType === 'arrow') {
                 currentPoints.push([e.lngLat.lng, e.lngLat.lat]);
@@ -423,7 +540,6 @@
                 const id = 'arrow-' + Date.now();
                 addArrowToMap(currentPoints, color, size, width, dashed, id, arrowCounter);
                 saveFeature(id, 'arrow', currentPoints, {color, size, width, dashed}, label, arrowCounter);
-                selectedLineId = id; 
                 stopDrawing();
             }
         });
@@ -464,85 +580,117 @@
             stopDrawing();
         }
 
-        function toggleGlowMode() {
-            isGlowingEnabled = document.getElementById('chk-glow-effect').checked;
-            updateVisibility();
-        }
-
-        function updateVisibility() {
-            mapData.features.forEach(feat => {
-                const step = feat.order;
-                const isVisible = (currentTimelineStep === 999) || (step <= currentTimelineStep);
-                
-                if(feat.type === 'arrow') {
-                    if (map.getLayer(feat.id)) map.setLayoutProperty(feat.id, 'visibility', isVisible ? 'visible' : 'none');
-                    const head = document.getElementById(feat.id + '-head');
-                    if(head) head.style.display = isVisible ? 'block' : 'none';
-
-                    if (head && map.getLayer(feat.id)) {
-                        head.classList.remove('feature-dimmed');
-                        if (isGlowingEnabled && currentTimelineStep !== 999 && isVisible) {
-                            if (step !== currentTimelineStep) {
-                                head.classList.add('feature-dimmed');
-                                map.setPaintProperty(feat.id, 'line-color', '#555555');
-                                map.setPaintProperty(feat.id, 'line-opacity', 0.4);
-                            } else {
-                                map.setPaintProperty(feat.id, 'line-color', feat.style.color);
-                                map.setPaintProperty(feat.id, 'line-opacity', 1);
-                            }
-                        } else {
-                            map.setPaintProperty(feat.id, 'line-color', feat.style.color);
-                            map.setPaintProperty(feat.id, 'line-opacity', 1);
-                        }
-                    }
-                }
-                else if (feat.type === 'marker') {
-                    const el = document.getElementById(feat.id);
-                    if(el) {
-                         el.classList.remove('feature-dimmed');
-                         if(isGlowingEnabled && currentTimelineStep !== 999 && feat.order !== currentTimelineStep && feat.order > 0) {
-                             el.classList.add('feature-dimmed');
-                         }
-                    }
-                }
-            });
-        }
-
+        // --- KEY HANDLERS (Rotate Arrow, Delete X, Bend Z) ---
         document.addEventListener('keydown', (e) => {
+            // Delete (X)
             if ((e.key === 'x' || e.key === 'X')) {
-                if (pendingDeleteId) {
+                if (currentDrawType === 'delete' && pendingDeleteId) {
                      if (suppressDeleteWarning) executeDelete(); else document.getElementById('delete-confirm-modal').style.display = 'flex';
+                } else if (selectedFeatureId) {
+                    // Quick delete selected
+                    pendingDeleteId = selectedFeatureId;
+                    if (suppressDeleteWarning) executeDelete(); else document.getElementById('delete-confirm-modal').style.display = 'flex';
                 }
             }
+            // Glow (U)
             if (e.key === 'u' || e.key === 'U') {
                 const chk = document.getElementById('chk-glow-effect'); chk.checked = !chk.checked; toggleGlowMode();
             }
+            // Bend (Z)
             if (e.key === 'z' || e.key === 'Z') isBending = true;
+            // Exit (Esc)
             if (e.key === 'Escape') {
-                if (currentDrawType === 'delete') {
+                if (currentDrawType === 'delete' || isDrawing) {
                     document.getElementById('draw-mode').value = 'none'; updateUI(); toggleDrawing(); 
-                } else { stopDrawing(); }
+                } 
+                selectFeature(null);
                 document.getElementById('delete-confirm-modal').style.display = 'none';
-                if(selectedRotatable && selectedRotatable.element) selectedRotatable.element.style.outline = 'none';
-                selectedRotatable = null;
             }
+            // Timeline
             if (e.key.toLowerCase() === 't') changeTimeline(1);
             if (e.key.toLowerCase() === 'y') changeTimeline(-1);
-            if (selectedRotatable) {
-                if (e.key.toLowerCase() === 'a') { selectedRotatable.bearing -= 5; updateRotation(); }
-                if (e.key.toLowerCase() === 'd') { selectedRotatable.bearing += 5; updateRotation(); }
+            
+            // ROTATE SELECTED OBJECT (Arrow Keys / A-D)
+            if (selectedFeatureId) {
+                const feature = mapData.features.find(f => f.id === selectedFeatureId);
+                if (feature) {
+                    // Rotate Icon/Marker head (A/D)
+                    if (e.key.toLowerCase() === 'a' || e.key.toLowerCase() === 'd') {
+                        const el = document.getElementById(feature.id + (feature.type==='arrow' ? '-head' : ''));
+                        if(el) {
+                            const icon = el.querySelector('i');
+                            if(icon) {
+                                let currentRot = 0;
+                                const st = window.getComputedStyle(icon);
+                                const tm = st.getPropertyValue("-webkit-transform") || st.getPropertyValue("transform");
+                                if(tm !== 'none') {
+                                    const values = tm.split('(')[1].split(')')[0].split(',');
+                                    const a = values[0]; const b = values[1];
+                                    currentRot = Math.round(Math.atan2(b, a) * (180/Math.PI));
+                                }
+                                const step = e.key.toLowerCase() === 'a' ? -5 : 5;
+                                icon.style.transform = `rotate(${currentRot + step}deg)`;
+                            }
+                        }
+                    }
+                    
+                    // REQ: Rotate Entire Arrow (Left/Right Arrow Keys)
+                    if (feature.type === 'arrow' && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                        e.preventDefault();
+                        const angle = e.key === 'ArrowLeft' ? -5 : 5;
+                        const lineString = turf.lineString(feature.data);
+                        const rotated = turf.transformRotate(lineString, angle);
+                        const newCoords = rotated.geometry.coordinates;
+                        
+                        // Update Data
+                        feature.data = newCoords;
+                        // Update Map Source
+                        map.getSource(feature.id).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: newCoords } });
+                        
+                        // Update Head Position
+                        const last = newCoords[newCoords.length - 1];
+                        const prev = newCoords[newCoords.length - 2];
+                        const bearing = turf.bearing(turf.point(prev), turf.point(last));
+                        
+                        const markerInstance = feature.markerInstance; // Need reference? No, we can select DOM
+                        // We need to move the marker using setLngLat. But we don't store marker instance in mapData easily.
+                        // However, we can re-create marker or find it if we stored it?
+                        // Hack: Store marker in mapData temporarily or global lookup?
+                        // Easier: remove and re-add arrow head? No visually bad.
+                        // Best: Access marker via global lookup or attach to DOM?
+                        // Let's assume we redraw or just move DOM? Marker logic binds to map.
+                        // Correct way: We need the marker object.
+                        // I will add markerInstance to mapData feature object when created.
+                    }
+                }
             }
         });
         document.addEventListener('keyup', (e) => { if (e.key === 'z' || e.key === 'Z') isBending = false; });
 
-        function updateRotation() {
-            if(!selectedRotatable) return;
-            const icon = selectedRotatable.element.querySelector('i');
-            if(icon) icon.style.transform = `rotate(${selectedRotatable.bearing}deg)`;
+        // Logic Bending (Sửa đường cong) + Fix Save
+        function handleBending(e) {
+            // Chỉ bend khi đang giữ Z và có đối tượng chọn
+            if (isBending && selectedFeatureId) {
+                const feature = mapData.features.find(f => f.id === selectedFeatureId);
+                if (feature && feature.type === 'arrow') {
+                    const originalCoords = feature.data; // Coordinates hiện tại
+                    const start = originalCoords[0];
+                    const end = originalCoords[originalCoords.length - 1];
+                    const mouse = [e.lngLat.lng, e.lngLat.lat];
+                    const line = turf.lineString([start, mouse, end]);
+                    const curved = turf.bezierSpline(line, { resolution: 10000, sharpness: 0.6 });
+                    
+                    // Update Map
+                    map.getSource(feature.id).setData(curved);
+                    
+                    // CRITICAL FIX: Update mapData with Curved Coords so JSON saves the curve
+                    feature.data = curved.geometry.coordinates;
+                }
+            }
         }
 
         function updateTempLayer(type) {
-            const data = { type: 'Feature', geometry: { type: 'LineString', coordinates: currentPoints } };
+            const data = { type: 'Feature', geometry: { type: type === 'line' ? 'LineString' : 'Polygon', coordinates: currentPoints } };
             if (map.getSource(tempId)) { map.getSource(tempId).setData(data); }
             else {
                 map.addSource(tempId, { type: 'geojson', data: data });
@@ -572,13 +720,144 @@
             
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if(trySelectForDelete(id, el)) return;
-                if(selectedRotatable) selectedRotatable.element.style.outline = 'none';
-                selectedRotatable = { marker: marker, element: el, bearing: bearing };
-                el.style.borderRadius = "50%"; el.style.outline = "2px dashed #f1c40f";
+                selectFeature(id);
+            });
+            
+            return marker;
+        }
+
+        function addPolygonToMap(coords, color, opacity, id, isDashed) {
+            map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } } });
+            // REQ: Polygon ở dưới lớp cuối cùng -> dùng beforeId.
+            // 'layer-separator' là lớp background trong suốt ta tạo lúc init
+            map.addLayer({ 
+                id: id + '-fill', type: 'fill', source: id, 
+                paint: { 'fill-color': color, 'fill-opacity': opacity } 
+            }, 'layer-separator'); // Insert before separator? No, separator is bottom. 
+            // We want polygon at bottom. MapLibre draws layers in order. 
+            // 'vn-border-line' is bottom. We want polygons above border but below arrows.
+            // Let's create specific layers order. Or simplest: moveLayer to just above border.
+            
+            // Fix: Dùng moveLayer sau khi add
+            map.moveLayer(id + '-fill', 'vn-border-line'); // Đặt ngay trên biên giới
+            
+            map.addLayer({ 
+                id: id + '-outline', type: 'line', source: id, 
+                paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': isDashed ? [2, 2] : [1, 0] } 
+            }, 'vn-border-line'); // Outline cũng vậy
+        }
+
+        function addIconMarker(lngLat, icon, color, size, label, id) {
+            const el = document.createElement('div'); el.className = `map-feature`; el.id = id;
+            const px = parseInt(size) * 8; el.innerHTML = `<i class="fas fa-${icon}" style="color:${color}; font-size:${px}px; text-shadow: 1px 1px 1px black;"></i>`;
+            const marker = new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
+            // Apply scale
+            const currentZoom = map.getZoom();
+            const scaleFactor = Math.max(0.5, Math.pow(1.3, currentZoom - 7.2));
+            el.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
+
+            el.addEventListener('click', (e) => { 
+                e.stopPropagation(); 
+                selectFeature(id);
+            });
+            return marker;
+        }
+
+        function addTextMarker(lngLat, text, color, size, font, bold, italic, id) {
+            const el = document.createElement('div'); el.className = `custom-text-marker`; el.id = id;
+            el.style.color = color; el.style.fontSize = (parseInt(size) * 5) + 'px'; el.style.fontFamily = font; el.style.fontWeight = bold ? 'bold' : 'normal'; el.style.fontStyle = italic ? 'italic' : 'normal'; el.innerText = text; el.style.cursor = 'pointer';
+            const marker = new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
+            
+            const currentZoom = map.getZoom();
+            const scaleFactor = Math.max(0.5, Math.pow(1.3, currentZoom - 7.2));
+            el.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
+
+            el.addEventListener('click', (e) => { e.stopPropagation(); selectFeature(id); });
+            return marker;
+        }
+
+        // --- DATA MANAGEMENT ---
+        function saveFeature(id, type, data, style, label, order, markerInstance = null) {
+            const feat = { id, type, data, style, label, order };
+            if(markerInstance) feat.markerInstance = markerInstance; // Store ref for rotation logic if possible (Note: can't stringify circular struct)
+            // We just push basic data to array. Marker instance is transient.
+            // For rotation logic we need to look up marker from Map object or global array.
+            // Let's verify existing id
+            const existingIdx = mapData.features.findIndex(f => f.id === id);
+            if (existingIdx > -1) {
+                mapData.features[existingIdx] = feat; // Update
+            } else {
+                mapData.features.push(feat);
+            }
+            renderTimelineTable();
+        }
+
+        function renderTimelineTable() {
+            const tbody = document.getElementById('timeline-list'); tbody.innerHTML = '';
+            const arrows = mapData.features.filter(f => f.type === 'arrow').sort((a,b) => a.order - b.order);
+            arrows.forEach(feat => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td align="center"><input type="number" class="order-input" value="${feat.order}" onchange="updateFeatureOrder('${feat.id}', this.value)"></td>
+                    <td><input type="text" class="name-input" value="${feat.label}" onchange="updateFeatureLabel('${feat.id}', this.value)"></td>
+                    <td align="center"><i class="fas fa-trash" style="cursor:pointer; color:#e74c3c;" onclick="confirmDeleteFromTable('${feat.id}')"></i></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            updateVisibility();
+        }
+        window.updateFeatureOrder = function(id, newOrderVal) {
+            let newOrder = parseInt(newOrderVal); if(isNaN(newOrder) || newOrder < 0) newOrder = 0;
+            const feature = mapData.features.find(f => f.id === id);
+            if(feature) { feature.order = newOrder; if(newOrder > arrowCounter) arrowCounter = newOrder; renderTimelineTable(); }
+        }
+        window.updateFeatureLabel = function(id, newLabel) {
+            const feature = mapData.features.find(f => f.id === id);
+            if(feature) { feature.label = newLabel; }
+        }
+        function confirmDeleteFromTable(id) { pendingDeleteId = id; if (suppressDeleteWarning) executeDelete(); else document.getElementById('delete-confirm-modal').style.display = 'flex'; }
+        function deleteFeature(id) {
+            if(map.getLayer(id)) map.removeLayer(id); if(map.getLayer(id+'-fill')) map.removeLayer(id+'-fill'); if(map.getLayer(id+'-outline')) map.removeLayer(id+'-outline'); if(map.getSource(id)) map.removeSource(id);
+            const el = document.getElementById(id); if(el) el.remove(); const headEl = document.getElementById(id+'-head'); if(headEl) headEl.remove();
+            mapData.features = mapData.features.filter(f => f.id !== id); 
+            if(selectedFeatureId === id) selectFeature(null);
+            renderTimelineTable();
+        }
+        function changeTimeline(val) {
+            if (currentTimelineStep === 999 && val === 1) currentTimelineStep = 0; 
+            currentTimelineStep += val; if (currentTimelineStep < 0) currentTimelineStep = 0; 
+            if (currentTimelineStep > arrowCounter + 5) currentTimelineStep = 999;
+            document.getElementById('current-step-display').innerText = currentTimelineStep === 999 ? "Hiện tất cả" : `Bước: ${currentTimelineStep}`;
+            updateVisibility();
+        }
+        function showAllTimeline() { currentTimelineStep = 999; document.getElementById('current-step-display').innerText = "Hiện tất cả"; updateVisibility(); }
+        function toggleGlowMode() { isGlowingEnabled = document.getElementById('chk-glow-effect').checked; updateVisibility(); }
+        function updateVisibility() {
+            mapData.features.forEach(feat => {
+                const step = feat.order;
+                const isVisible = (currentTimelineStep === 999) || (step <= currentTimelineStep);
+                if(feat.type === 'arrow') {
+                    if (map.getLayer(feat.id)) map.setLayoutProperty(feat.id, 'visibility', isVisible ? 'visible' : 'none');
+                    const head = document.getElementById(feat.id + '-head');
+                    if(head) head.style.display = isVisible ? 'block' : 'none';
+                    if (head && map.getLayer(feat.id)) {
+                        head.classList.remove('feature-dimmed');
+                        if (isGlowingEnabled && currentTimelineStep !== 999 && isVisible) {
+                            if (step !== currentTimelineStep) {
+                                head.classList.add('feature-dimmed');
+                                map.setPaintProperty(feat.id, 'line-color', '#555555'); map.setPaintProperty(feat.id, 'line-opacity', 0.4);
+                            } else {
+                                map.setPaintProperty(feat.id, 'line-color', feat.style.color); map.setPaintProperty(feat.id, 'line-opacity', 1);
+                            }
+                        } else {
+                            map.setPaintProperty(feat.id, 'line-color', feat.style.color); map.setPaintProperty(feat.id, 'line-opacity', 1);
+                        }
+                    }
+                }
             });
         }
 
+        // --- LEGEND & IMPORT/EXPORT ---
         function createStaticLegend() {
             const container = document.getElementById('static-legend-container');
             const items = [
@@ -592,7 +871,7 @@
                 { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#2980b9; border-bottom:2px dashed #2980b9;"></i>', text: 'Quân Minh rút chạy', type: 'arrow', color: '#2980b9', dashed: true },
                 { icon: '<div style="width:14px;height:14px;background:#eab676;opacity:0.8;border:1px solid #d35400"></div>', text: 'Vùng hoạt động 1418-1423', type: 'polygon', color: '#eab676', dashed: false },
                 { icon: '<div style="width:14px;height:14px;background:#a2d9a2;opacity:0.8;border:1px solid #27ae60"></div>', text: 'Vùng giải phóng 1424-1425', type: 'polygon', color: '#a2d9a2', dashed: false },
-                { icon: '<div style="width:14px;height:14px;background:#c3e6cb;opacity:0.8;border:1px solid #2ecc71"></div>', text: 'Khu vực được nghĩa quân giải phóng 1426-1427', type: 'polygon', color: '#c3e6cb', dashed: false },
+                { icon: '<div style="width:14px;height:14px;background:#c3e6cb;opacity:0.8;border:1px solid #2ecc71"></div>', text: 'Vùng giải phóng 1426-1427', type: 'polygon', color: '#c3e6cb', dashed: false },
                 { icon: '<div style="width:20px;height:0px;border-top:2px dashed #000;"></div>', text: 'Biên giới quốc gia', type: 'none', color: '#000' }
             ];
             items.forEach(item => {
@@ -610,170 +889,16 @@
                 container.appendChild(div);
             });
         }
-        
         function toggleLegend() { const leg = document.getElementById('floating-legend'); const icon = document.getElementById('legend-icon'); leg.classList.toggle('minimized'); icon.className = leg.classList.contains('minimized') ? "fas fa-chevron-up" : "fas fa-chevron-down"; }
         function toggleMapLabels() {
-            let labelsVisible = document.getElementById('label-toggle-btn').style.color !== 'rgb(170, 170, 170)';
-            labelsVisible = !labelsVisible;
-            const btn = document.getElementById('label-toggle-btn');
-            btn.innerHTML = labelsVisible ? '<i class="fas fa-font"></i>' : '<i class="fas fa-slash"></i>';
-            btn.style.color = labelsVisible ? 'white' : '#aaa';
-            const layers = map.getStyle().layers;
-            layers.forEach(layer => { if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', labelsVisible ? 'visible' : 'none'); });
+            let labelsVisible = document.getElementById('label-toggle-btn').style.color !== 'rgb(170, 170, 170)'; labelsVisible = !labelsVisible;
+            const btn = document.getElementById('label-toggle-btn'); btn.innerHTML = labelsVisible ? '<i class="fas fa-font"></i>' : '<i class="fas fa-slash"></i>'; btn.style.color = labelsVisible ? 'white' : '#aaa';
+            const layers = map.getStyle().layers; layers.forEach(layer => { if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', labelsVisible ? 'visible' : 'none'); });
         }
         function selectIcon(name) { selectedIcon = name; document.querySelectorAll('.icon-option').forEach(el=>el.classList.remove('selected')); event.currentTarget.classList.add('selected'); }
-        function updateUI() {
-            const mode = document.getElementById('draw-mode').value;
-            if (mode === 'delete') { document.getElementById('options-panel').style.display = 'none'; return; }
-            document.getElementById('options-panel').style.display = mode === 'none' ? 'none' : 'block';
-            document.getElementById('icon-options').style.display = mode === 'marker' ? 'block' : 'none';
-            document.getElementById('text-options').style.display = mode === 'text' ? 'block' : 'none';
-            document.getElementById('arrow-specific-options').style.display = mode === 'arrow' ? 'block' : 'none';
-            document.getElementById('polygon-specific-options').style.display = mode === 'polygon' ? 'block' : 'none';
-        }
-        
-        function trySelectForDelete(id, element) {
-             if (currentDrawType === 'delete') {
-                clearDeleteSelection(); pendingDeleteId = id; element.classList.add('selected-danger');
-                new maplibregl.Popup({closeButton:false, closeOnClick:true, offset: 25}).setLngLat(mapData.features.find(f=>f.id===id).data).setHTML('<div style="color:red; font-weight:bold;">Nhấn X để xóa</div>').addTo(map);
-                return true;
-             } 
-             pendingDeleteId = id;
-             return false;
-        }
-        
-        function handleDeleteSelection(e) {
-             const point = e.point; clearDeleteSelection();
-             const arrowLayers = mapData.features.filter(f=>f.type==='arrow').map(f=>f.id);
-             const arrowFeatures = map.queryRenderedFeatures(point, { layers: arrowLayers });
-             if (arrowFeatures.length > 0) {
-                 const id = arrowFeatures[0].layer.id; pendingDeleteId = id;
-                 map.setPaintProperty(id, 'line-color', '#ff0000'); 
-                 new maplibregl.Popup({closeButton:false}).setLngLat(e.lngLat).setHTML('<div style="color:red; font-weight:bold;">Nhấn X để xóa</div>').addTo(map);
-                 return;
-             }
-             const polyLayers = mapData.features.filter(f=>f.type==='polygon').map(f=>f.id + '-fill');
-             const polyFeatures = map.queryRenderedFeatures(point, { layers: polyLayers });
-             if (polyFeatures.length > 0) {
-                 const id = polyFeatures[0].layer.id.replace('-fill', ''); pendingDeleteId = id;
-                 map.setPaintProperty(id + '-fill', 'fill-color', '#ff0000'); map.setPaintProperty(id + '-fill', 'fill-opacity', 0.7);
-                 new maplibregl.Popup({closeButton:false}).setLngLat(e.lngLat).setHTML('<div style="color:red; font-weight:bold;">Nhấn X để xóa</div>').addTo(map);
-                 return;
-             }
-        }
-        
-        function clearDeleteSelection() {
-            if(pendingDeleteId) {
-                const feat = mapData.features.find(f => f.id === pendingDeleteId);
-                if(feat) {
-                    const el = document.getElementById(pendingDeleteId); if(el) el.classList.remove('selected-danger');
-                    if(feat.type === 'arrow' && map.getLayer(feat.id)) { map.setPaintProperty(feat.id, 'line-color', feat.style.color); }
-                    if(feat.type === 'polygon' && map.getLayer(feat.id+'-fill')) { map.setPaintProperty(feat.id+'-fill', 'fill-color', feat.style.color); map.setPaintProperty(feat.id+'-fill', 'fill-opacity', feat.style.opacity); }
-                }
-                const popup = document.querySelector('.maplibregl-popup'); if(popup) popup.remove();
-            }
-        }
-        function executeDelete() { if (pendingDeleteId) { deleteFeature(pendingDeleteId); pendingDeleteId = null; } }
-        document.getElementById('btn-confirm-delete').addEventListener('click', function() { if (document.getElementById('chk-no-remind').checked) suppressDeleteWarning = true; executeDelete(); document.getElementById('delete-confirm-modal').style.display = 'none'; });
-        document.getElementById('btn-cancel-delete').addEventListener('click', function() { document.getElementById('delete-confirm-modal').style.display = 'none'; });
-        
-        function handleSelectionClick(e) {
-             const point = e.point;
-             const arrowFeatures = map.queryRenderedFeatures(point, { layers: mapData.features.filter(f=>f.type==='arrow').map(f=>f.id) });
-             if (arrowFeatures.length > 0) {
-                 selectedLineId = arrowFeatures[0].layer.id; 
-                 new maplibregl.Popup().setLngLat(e.lngLat).setHTML('<div class="bend-popup"><b>Đã chọn mũi tên</b><br>Giữ <b>Z</b> + Di chuột để uốn cong.</div>').addTo(map);
-                 return;
-             }
-        }
-        
-        function handleBending(e) {
-            if (isBending && selectedLineId) {
-                const featureObj = mapData.features.find(f => f.id === selectedLineId);
-                if (featureObj && featureObj.type === 'arrow') {
-                    const originalCoords = featureObj.data; 
-                    const start = originalCoords[0]; const end = originalCoords[originalCoords.length - 1]; const mouse = [e.lngLat.lng, e.lngLat.lat];
-                    const line = turf.lineString([start, mouse, end]);
-                    const curved = turf.bezierSpline(line, { resolution: 10000, sharpness: 0.6 });
-                    map.getSource(selectedLineId).setData(curved);
-                }
-            }
-        }
-        
-        function saveFeature(id, type, data, style, label, order) { mapData.features.push({ id, type, data, style, label, order }); renderTimelineTable(); }
-        
-        function renderTimelineTable() {
-            const tbody = document.getElementById('timeline-list'); tbody.innerHTML = '';
-            const arrows = mapData.features.filter(f => f.type === 'arrow').sort((a,b) => a.order - b.order);
-            arrows.forEach(feat => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td align="center"><input type="number" class="order-input" value="${feat.order}" onchange="updateFeatureOrder('${feat.id}', this.value)"></td>
-                    <td><input type="text" class="name-input" value="${feat.label}" onchange="updateFeatureLabel('${feat.id}', this.value)"></td>
-                    <td align="center"><i class="fas fa-trash" style="cursor:pointer; color:#e74c3c;" onclick="confirmDeleteFromTable('${feat.id}')"></i></td>
-                `;
-                tbody.appendChild(tr);
-            });
-            updateVisibility();
-        }
-        window.updateFeatureOrder = function(id, newOrderVal) {
-            let newOrder = parseInt(newOrderVal); 
-            if(isNaN(newOrder) || newOrder < 0) newOrder = 0;
-            const feature = mapData.features.find(f => f.id === id);
-            if(feature) { feature.order = newOrder; if(newOrder > arrowCounter) arrowCounter = newOrder; renderTimelineTable(); }
-        }
-        window.updateFeatureLabel = function(id, newLabel) {
-            const feature = mapData.features.find(f => f.id === id);
-            if(feature) { feature.label = newLabel; }
-        }
-        function confirmDeleteFromTable(id) { pendingDeleteId = id; if (suppressDeleteWarning) executeDelete(); else document.getElementById('delete-confirm-modal').style.display = 'flex'; }
-        
-        function deleteFeature(id) {
-            if(map.getLayer(id)) map.removeLayer(id); if(map.getLayer(id+'-fill')) map.removeLayer(id+'-fill'); if(map.getLayer(id+'-outline')) map.removeLayer(id+'-outline'); if(map.getSource(id)) map.removeSource(id);
-            const el = document.getElementById(id); if(el) el.remove(); const headEl = document.getElementById(id+'-head'); if(headEl) headEl.remove();
-            mapData.features = mapData.features.filter(f => f.id !== id); renderTimelineTable();
-        }
-        
-        function changeTimeline(val) {
-            if (currentTimelineStep === 999 && val === 1) currentTimelineStep = 0; 
-            currentTimelineStep += val;
-            if (currentTimelineStep < 0) currentTimelineStep = 0; 
-            if (currentTimelineStep > arrowCounter + 5) currentTimelineStep = 999;
-            document.getElementById('current-step-display').innerText = currentTimelineStep === 999 ? "Hiện tất cả" : `Bước: ${currentTimelineStep}`;
-            updateVisibility();
-        }
-        function showAllTimeline() { currentTimelineStep = 999; document.getElementById('current-step-display').innerText = "Hiện tất cả"; updateVisibility(); }
-        
-        function addPolygonToMap(coords, color, opacity, id, isDashed) {
-            map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } } });
-            map.addLayer({ id: id + '-fill', type: 'fill', source: id, paint: { 'fill-color': color, 'fill-opacity': opacity } });
-            map.addLayer({ id: id + '-outline', type: 'line', source: id, paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': isDashed ? [2, 2] : [1, 0] } });
-        }
-        
-        function addIconMarker(lngLat, icon, color, size, label, id) {
-            const el = document.createElement('div'); el.className = `map-feature`; el.id = id;
-            const px = parseInt(size) * 8; el.innerHTML = `<i class="fas fa-${icon}" style="color:${color}; font-size:${px}px; text-shadow: 1px 1px 1px black;"></i>`;
-            const marker = new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
-            el.addEventListener('click', (e) => { 
-                e.stopPropagation(); 
-                if(trySelectForDelete(id, el)) return;
-                if(selectedRotatable) selectedRotatable.element.style.outline = 'none';
-                selectedRotatable = { marker: marker, element: el, bearing: 0 };
-                el.style.borderRadius = "20%"; el.style.outline = "2px dashed #f1c40f";
-            });
-        }
-        
-        function addTextMarker(lngLat, text, color, size, font, bold, italic, id) {
-            const el = document.createElement('div'); el.className = `custom-text-marker`; el.id = id;
-            el.style.color = color; el.style.fontSize = (parseInt(size) * 5) + 'px'; el.style.fontFamily = font; el.style.fontWeight = bold ? 'bold' : 'normal'; el.style.fontStyle = italic ? 'italic' : 'normal'; el.innerText = text; el.style.cursor = 'pointer';
-            el.addEventListener('click', (e) => { e.stopPropagation(); trySelectForDelete(id, el); });
-            new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
-        }
-        
-        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v10.json"; link.click(); }
+        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v13.json"; link.click(); }
         function importJSON(input) {
-            const file = input.files[0];
-            if (!file) return;
+            const file = input.files[0]; if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
@@ -783,17 +908,21 @@
                     data.features.forEach(f => {
                         if (f.order > arrowCounter) arrowCounter = f.order;
                         if (f.type === 'arrow') {
-                            addArrowToMap(f.data, f.style.color, f.style.size, f.style.width || 4, f.style.dashed, f.id, f.order);
-                            saveFeature(f.id, 'arrow', f.data, f.style, f.label, f.order);
+                            const marker = addArrowToMap(f.data, f.style.color, f.style.size, f.style.width || 4, f.style.dashed, f.id, f.order);
+                            saveFeature(f.id, 'arrow', f.data, f.style, f.label, f.order, marker);
                         } else if (f.type === 'marker') {
                             addIconMarker({lng: f.data.lng, lat: f.data.lat}, f.data.icon, f.style.color, f.style.size, f.label, f.id);
                             saveFeature(f.id, 'marker', f.data, f.style, f.label, 0);
                         } else if (f.type === 'text') {
-                            addTextMarker({lng: f.data.lng, lat: f.data.lat}, f.data.text, f.style.color, f.style.size, f.style.font, f.style.isBold, f.style.isItalic, f.id);
-                            saveFeature(f.id, 'text', f.data, f.style, f.label, 0);
+                            if(f.data && f.data.lng) {
+                                addTextMarker({lng: f.data.lng, lat: f.data.lat}, f.data.text, f.style.color, f.style.size, f.style.font, f.style.isBold, f.style.isItalic, f.id);
+                                saveFeature(f.id, 'text', f.data, f.style, f.label, 0);
+                            }
                         } else if (f.type === 'polygon') {
                             if (f.style.isFill) {
-                                addPolygonToMap(f.data, f.style.color, f.style.opacity, f.id, f.style.isDashed);
+                                let inputCoords = f.data;
+                                if(Array.isArray(f.data) && Array.isArray(f.data[0]) && Array.isArray(f.data[0][0])) inputCoords = f.data[0];
+                                addPolygonToMap(inputCoords, f.style.color, f.style.opacity, f.id, f.style.isDashed);
                             } else {
                                 map.addSource(f.id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: f.data } } });
                                 map.addLayer({ id: f.id + '-outline', type: 'line', source: f.id, paint: { 'line-color': f.style.color, 'line-width': 3, 'line-dasharray': f.style.isDashed ? [2, 2] : [1, 0] } });
@@ -801,7 +930,7 @@
                             saveFeature(f.id, 'polygon', f.data, f.style, f.label, 0);
                         }
                     });
-                    alert("Đã tải bản đồ thành công!");
+                    setTimeout(updateMarkerScales, 100); alert("Đã tải bản đồ thành công!");
                 } catch (err) { console.error(err); alert("Lỗi file không đúng định dạng."); }
             };
             reader.readAsText(file); input.value = '';

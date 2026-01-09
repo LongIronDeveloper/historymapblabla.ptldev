@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v16 (Fix Delete Text)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v17 (Final Fix Delete)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -97,13 +97,16 @@
         .map-feature i { filter: sepia(0.4) drop-shadow(0px 2px 2px rgba(0,0,0,0.8)); }
         .bend-popup { font-size: 11px; color: #333; }
 
+        /* FIXED MODAL Z-INDEX */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; z-index: 9999;
+            background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; 
+            z-index: 20000; /* Tăng Z-Index lên cao nhất để đảm bảo nút xóa bấm được */
         }
         .modal-content {
             background: white; padding: 20px; border-radius: 8px; width: 320px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5); font-family: Arial, sans-serif;
+            pointer-events: auto; /* Đảm bảo nhận click */
         }
         .modal-content h3 { color: #d9534f; margin-top: 0; border-bottom: none; font-size: 18px; text-align: left; }
         .modal-buttons { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
@@ -148,7 +151,7 @@
                 <b>3. XOAY:</b> Chọn icon/mũi tên -> Dùng phím <span class="help-key">A</span> (Trái) / <span class="help-key">D</span> (Phải).<br>
                 <b>4. VẼ VÙNG:</b> Vẽ xong vùng sẽ tự động nằm dưới các lớp khác.<br>
                 <b>5. BẺ CONG:</b> Giữ <span class="help-key">Z</span> + Di chuột (chỉ hoạt động khi không ở chế độ vẽ).<br>
-                <b>6. XÓA:</b> Chọn chế độ Xóa rồi click đối tượng (hoặc click chọn rồi nhấn <span class="help-key">X</span>).
+                <b>6. XÓA:</b> Chọn đối tượng -> Nhấn <span class="help-key">X</span>.
             </div>
         </div>
 
@@ -269,8 +272,8 @@
                 <input type="checkbox" id="chk-no-remind"> Không nhắc lại
             </label>
             <div class="modal-buttons">
-                <button id="btn-confirm-delete" class="btn-danger">Xóa (X)</button>
-                <button id="btn-cancel-delete" class="btn-secondary">Hủy (Esc)</button>
+                <button id="btn-confirm-delete" type="button" class="btn-danger">Xóa (X)</button>
+                <button id="btn-cancel-delete" type="button" class="btn-secondary">Hủy (Esc)</button>
             </div>
         </div>
     </div>
@@ -316,6 +319,19 @@
             });
             document.getElementById('label-toggle-btn').addEventListener('click', function() {
                 toggleMapLabels();
+            });
+
+            // Gắn sự kiện nút xóa tại đây
+            document.getElementById('btn-confirm-delete').addEventListener('click', function(e) {
+                e.stopPropagation(); // Ngăn click xuyên xuống map
+                if (document.getElementById('chk-no-remind').checked) suppressDeleteWarning = true;
+                executeDelete();
+                document.getElementById('delete-confirm-modal').style.display = 'none';
+            });
+
+            document.getElementById('btn-cancel-delete').addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.getElementById('delete-confirm-modal').style.display = 'none';
             });
         });
 
@@ -614,10 +630,8 @@
             stopDrawing();
         }
 
-        // --- KEY HANDLERS ---
         document.addEventListener('keydown', (e) => {
             if ((e.key === 'x' || e.key === 'X')) {
-                // Ưu tiên xóa theo chế độ
                 if (currentDrawType === 'delete' && pendingDeleteId) {
                      if (suppressDeleteWarning) executeDelete(); else document.getElementById('delete-confirm-modal').style.display = 'flex';
                 } else if (selectedFeatureId) {
@@ -696,7 +710,6 @@
             }
         }
 
-        // --- SỬA LỖI CLICK ICON & TEXT ---
         function addArrowToMap(coords, color, headSize, lineWidth, dashed, id, order) {
             map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } } });
             map.addLayer({
@@ -717,7 +730,6 @@
             
             const marker = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat(last).addTo(map);
             
-            // Logic Click mới: Kiểm tra chế độ Xóa
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (currentDrawType === 'delete') {
@@ -750,7 +762,6 @@
             const scaleFactor = Math.max(0.5, Math.pow(1.3, currentZoom - 7.2));
             el.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
             
-            // Logic Click mới: Kiểm tra chế độ Xóa
             el.addEventListener('click', (e) => { 
                 e.stopPropagation(); 
                 if (currentDrawType === 'delete') {
@@ -770,7 +781,6 @@
             const scaleFactor = Math.max(0.5, Math.pow(1.3, currentZoom - 7.2));
             el.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
             
-            // Logic Click mới: Kiểm tra chế độ Xóa
             el.addEventListener('click', (e) => { 
                 e.stopPropagation(); 
                 if (currentDrawType === 'delete') {
@@ -782,7 +792,6 @@
             return marker;
         }
 
-        // --- DATA MANAGEMENT ---
         function saveFeature(id, type, data, style, label, order, markerInstance = null) {
             const feat = { id, type, data, style, label, order };
             if(markerInstance) feat.markerInstance = markerInstance; 
@@ -828,11 +837,14 @@
             const feat = mapData.features.find(f => f.id === id);
             if (feat && feat.markerInstance) feat.markerInstance.remove();
 
-            // Sửa lỗi: Bỏ chọn trước khi xóa data để tránh lỗi truy cập null
             if(selectedFeatureId === id) selectFeature(null);
 
             mapData.features = mapData.features.filter(f => f.id !== id); 
             renderTimelineTable();
+        }
+
+        function executeDelete() {
+            if (pendingDeleteId) { deleteFeature(pendingDeleteId); pendingDeleteId = null; }
         }
 
         function handleDeleteSelection(e) {
@@ -847,10 +859,7 @@
              clearDeleteSelection(); 
              pendingDeleteId = id; 
              element.classList.add('selected-danger');
-             new maplibregl.Popup({closeButton:false, closeOnClick:true, offset: 25})
-                .setLngLat(map.getCenter()) // Dùng center tạm thời hoặc vị trí marker
-                .setHTML('<div style="color:red; font-weight:bold;">Nhấn X để xóa</div>')
-                .addTo(map);
+             new maplibregl.Popup({closeButton:false, closeOnClick:true, offset: 25}).setLngLat(map.getCenter()).setHTML('<div style="color:red; font-weight:bold;">Nhấn X để xóa</div>').addTo(map);
         }
 
         function selectForDelete(id) {
@@ -858,9 +867,7 @@
              map.setPaintProperty(id, 'line-color', '#ff0000');
              new maplibregl.Popup({closeButton:false}).setLngLat(map.getCenter()).setHTML('<div style="color:red; font-weight:bold;">Nhấn X để xóa</div>').addTo(map);
         }
-        function clearDeleteSelection() { 
-            // Có thể thêm logic reset màu đỏ ở đây nếu cần thiết
-        }
+        function clearDeleteSelection() { }
 
         function changeTimeline(val) {
             if (currentTimelineStep === 999 && val === 1) currentTimelineStep = 0; 
@@ -935,7 +942,7 @@
             const layers = map.getStyle().layers; layers.forEach(layer => { if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', labelsVisible ? 'visible' : 'none'); });
         }
         function selectIcon(name) { selectedIcon = name; document.querySelectorAll('.icon-option').forEach(el=>el.classList.remove('selected')); event.currentTarget.classList.add('selected'); }
-        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v16.json"; link.click(); }
+        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v17.json"; link.click(); }
         function importJSON(input) {
             const file = input.files[0]; if (!file) return;
             const reader = new FileReader();

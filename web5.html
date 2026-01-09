@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v17 (Final Fix Delete)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v18 (Fix Text & Input)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -97,16 +97,15 @@
         .map-feature i { filter: sepia(0.4) drop-shadow(0px 2px 2px rgba(0,0,0,0.8)); }
         .bend-popup { font-size: 11px; color: #333; }
 
-        /* FIXED MODAL Z-INDEX */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; 
-            z-index: 20000; /* Tăng Z-Index lên cao nhất để đảm bảo nút xóa bấm được */
+            z-index: 20000;
         }
         .modal-content {
             background: white; padding: 20px; border-radius: 8px; width: 320px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5); font-family: Arial, sans-serif;
-            pointer-events: auto; /* Đảm bảo nhận click */
+            pointer-events: auto;
         }
         .modal-content h3 { color: #d9534f; margin-top: 0; border-bottom: none; font-size: 18px; text-align: left; }
         .modal-buttons { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
@@ -151,7 +150,7 @@
                 <b>3. XOAY:</b> Chọn icon/mũi tên -> Dùng phím <span class="help-key">A</span> (Trái) / <span class="help-key">D</span> (Phải).<br>
                 <b>4. VẼ VÙNG:</b> Vẽ xong vùng sẽ tự động nằm dưới các lớp khác.<br>
                 <b>5. BẺ CONG:</b> Giữ <span class="help-key">Z</span> + Di chuột (chỉ hoạt động khi không ở chế độ vẽ).<br>
-                <b>6. XÓA:</b> Chọn đối tượng -> Nhấn <span class="help-key">X</span>.
+                <b>6. XÓA:</b> Chọn chế độ Xóa rồi click đối tượng (hoặc click chọn rồi nhấn <span class="help-key">X</span>).
             </div>
         </div>
 
@@ -174,13 +173,13 @@
                 
                 <div id="edit-text-container" style="display:none; margin-bottom: 8px;">
                     <label style="color:#00b894;">Sửa nội dung chữ:</label>
-                    <input type="text" id="edit-text-content" style="width:100%; border: 1px solid #00b894;" oninput="updateSelectedTextContent()">
+                    <input type="text" id="edit-text-content" class="safe-input" style="width:100%; border: 1px solid #00b894;" oninput="updateSelectedTextContent()">
                 </div>
 
                 <div style="display:flex; gap:5px; align-items:center; flex-wrap: wrap;">
                     <input type="color" id="draw-color" value="#c0392b" style="width:40px; height:30px; padding:0;" oninput="updateSelectedFeatureStyle()">
-                    <input type="number" id="draw-size" value="4" min="1" max="50" title="Kích thước đầu mũi tên/Icon/Chữ" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
-                    <input type="number" id="draw-width" value="4" min="1" max="20" title="Độ dày đường thẳng" style="width:50px;" placeholder="Dày" oninput="updateSelectedFeatureStyle()">
+                    <input type="number" id="draw-size" class="safe-input" value="4" min="1" max="50" title="Kích thước đầu mũi tên/Icon/Chữ" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
+                    <input type="number" id="draw-width" class="safe-input" value="4" min="1" max="20" title="Độ dày đường thẳng" style="width:50px;" placeholder="Dày" oninput="updateSelectedFeatureStyle()">
                 </div>
                 <div id="arrow-specific-options" style="display:none; margin-top:5px;">
                      <label><input type="checkbox" id="draw-dashed"> Nét đứt (Rút lui/Bí mật)</label>
@@ -189,7 +188,7 @@
                     <label><input type="checkbox" id="poly-fill" checked> Tự động đổ màu (Khép kín)</label>
                     <label><input type="checkbox" id="poly-dashed"> Viền nét đứt</label>
                 </div>
-                <input type="text" id="draw-label" placeholder="Tên (Hiển thị trong timeline)..." style="margin-top:5px;">
+                <input type="text" id="draw-label" class="safe-input" placeholder="Tên (Hiển thị trong timeline)..." style="margin-top:5px;">
             </div>
 
             <div class="control-group" id="icon-options" style="display:none;">
@@ -208,7 +207,7 @@
             </div>
 
             <div class="control-group" id="text-options" style="display:none;">
-                <input type="text" id="text-content" placeholder="Nội dung chữ mới...">
+                <input type="text" id="text-content" class="safe-input" placeholder="Nội dung chữ mới...">
                 <select id="text-font">
                     <option value="'Merriweather', serif">Merriweather (Cổ điển)</option>
                     <option value="'Roboto', sans-serif">Roboto (Hiện đại)</option>
@@ -321,9 +320,8 @@
                 toggleMapLabels();
             });
 
-            // Gắn sự kiện nút xóa tại đây
             document.getElementById('btn-confirm-delete').addEventListener('click', function(e) {
-                e.stopPropagation(); // Ngăn click xuyên xuống map
+                e.stopPropagation();
                 if (document.getElementById('chk-no-remind').checked) suppressDeleteWarning = true;
                 executeDelete();
                 document.getElementById('delete-confirm-modal').style.display = 'none';
@@ -630,7 +628,13 @@
             stopDrawing();
         }
 
+        // --- KEY HANDLERS (FIXED INPUT ISSUE) ---
         document.addEventListener('keydown', (e) => {
+            // FIX 1: Bỏ qua phím tắt nếu đang gõ trong ô input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.classList.contains('safe-input')) {
+                return; 
+            }
+
             if ((e.key === 'x' || e.key === 'X')) {
                 if (currentDrawType === 'delete' && pendingDeleteId) {
                      if (suppressDeleteWarning) executeDelete(); else document.getElementById('delete-confirm-modal').style.display = 'flex';
@@ -641,7 +645,7 @@
             }
             
             if (selectedFeatureId) {
-                const speed = 2; // Fixed 2px
+                const speed = 2; 
                 if (e.key === 'ArrowUp') moveSelectedFeature(0, speed);
                 if (e.key === 'ArrowDown') moveSelectedFeature(0, -speed);
                 if (e.key === 'ArrowLeft') moveSelectedFeature(-speed, 0);
@@ -878,26 +882,34 @@
         }
         function showAllTimeline() { currentTimelineStep = 999; document.getElementById('current-step-display').innerText = "Hiện tất cả"; updateVisibility(); }
         function toggleGlowMode() { isGlowingEnabled = document.getElementById('chk-glow-effect').checked; updateVisibility(); }
+        
+        // FIX 2: Tách biệt logic ẩn hiện line và head
         function updateVisibility() {
             mapData.features.forEach(feat => {
                 const step = feat.order;
                 const isVisible = (currentTimelineStep === 999) || (step <= currentTimelineStep);
-                if(feat.type === 'arrow' && map.getLayer(feat.id)) {
-                    map.setLayoutProperty(feat.id, 'visibility', isVisible ? 'visible' : 'none');
+                
+                if (feat.type === 'arrow') {
+                    // 1. Xử lý đường Line
+                    if (map.getLayer(feat.id)) {
+                        map.setLayoutProperty(feat.id, 'visibility', isVisible ? 'visible' : 'none');
+                        // Hiệu ứng mờ
+                        if (isVisible && isGlowingEnabled && currentTimelineStep !== 999 && step !== currentTimelineStep) {
+                             map.setPaintProperty(feat.id, 'line-color', '#555555'); 
+                             map.setPaintProperty(feat.id, 'line-opacity', 0.4);
+                        } else if (isVisible) {
+                             map.setPaintProperty(feat.id, 'line-color', feat.style.color); 
+                             map.setPaintProperty(feat.id, 'line-opacity', 1);
+                        }
+                    }
+                    
+                    // 2. Xử lý đầu mũi tên (Head) - Độc lập với map layer
                     const head = document.getElementById(feat.id + '-head');
-                    if(head) {
+                    if (head) {
                         head.style.display = isVisible ? 'block' : 'none';
-                        if (isGlowingEnabled && currentTimelineStep !== 999 && isVisible) {
-                            if (step !== currentTimelineStep) {
-                                head.classList.add('feature-dimmed');
-                                map.setPaintProperty(feat.id, 'line-color', '#555555'); map.setPaintProperty(feat.id, 'line-opacity', 0.4);
-                            } else {
-                                head.classList.remove('feature-dimmed');
-                                map.setPaintProperty(feat.id, 'line-color', feat.style.color); map.setPaintProperty(feat.id, 'line-opacity', 1);
-                            }
-                        } else {
-                            head.classList.remove('feature-dimmed');
-                            map.setPaintProperty(feat.id, 'line-color', feat.style.color); map.setPaintProperty(feat.id, 'line-opacity', 1);
+                        head.classList.remove('feature-dimmed');
+                        if (isVisible && isGlowingEnabled && currentTimelineStep !== 999 && step !== currentTimelineStep) {
+                            head.classList.add('feature-dimmed');
                         }
                     }
                 }
@@ -942,7 +954,7 @@
             const layers = map.getStyle().layers; layers.forEach(layer => { if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', labelsVisible ? 'visible' : 'none'); });
         }
         function selectIcon(name) { selectedIcon = name; document.querySelectorAll('.icon-option').forEach(el=>el.classList.remove('selected')); event.currentTarget.classList.add('selected'); }
-        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v17.json"; link.click(); }
+        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v18.json"; link.click(); }
         function importJSON(input) {
             const file = input.files[0]; if (!file) return;
             const reader = new FileReader();

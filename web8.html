@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v20 (Save Fix & Rotation)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v21 (Audio & Timeline)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -39,11 +39,12 @@
         
         input, select, button { width: 100%; margin-bottom: 8px; padding: 8px; border-radius: 4px; border: 1px solid #555; background: #3c3c3c; color: white; font-size: 13px; }
         input[type="checkbox"] { width: auto; margin-right: 5px; vertical-align: middle; }
+        input[type="range"] { width: 100%; margin: 5px 0; cursor: pointer; }
         
         button.btn-action { background: #5d4037; font-weight: bold; border: 1px solid #8d6e63; cursor: pointer; color: #f1c40f; }
         button.btn-action:hover { background: #795548; }
 
-        /* Icon Grid */
+        /* Icon Grid Fix */
         .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
         .icon-option { background: #4a3b32; border: 1px solid #6d4c41; padding: 8px; text-align: center; cursor: pointer; border-radius: 4px; }
         .icon-option.selected { background: #f1c40f; color: #2c3e50; border-color: #fff; box-shadow: 0 0 8px #f1c40f; }
@@ -145,12 +146,12 @@
         <div class="control-group">
             <h3><i class="fas fa-info-circle"></i> Hướng Dẫn Sử Dụng</h3>
             <div class="help-box">
-                <b>1. DI CHUYỂN:</b> Chọn đối tượng -> Dùng phím <span class="help-key">↑</span> <span class="help-key">↓</span> <span class="help-key">←</span> <span class="help-key">→</span> để di chuyển (mỗi lần 2px).<br>
+                <b>1. DI CHUYỂN:</b> Chọn đối tượng -> Dùng phím <span class="help-key">↑</span> <span class="help-key">↓</span> <span class="help-key">←</span> <span class="help-key">→</span> (2px).<br>
                 <b>2. CHỈNH SỬA:</b> Click chọn để đổi màu/size. Sửa nội dung chữ ở ô bên dưới.<br>
                 <b>3. XOAY:</b> Chọn icon/mũi tên -> Dùng phím <span class="help-key">A</span> (Trái) / <span class="help-key">D</span> (Phải).<br>
-                <b>4. VẼ VÙNG:</b> Vẽ xong vùng sẽ tự động nằm dưới các lớp khác.<br>
-                <b>5. BẺ CONG:</b> Giữ <span class="help-key">Z</span> + Di chuột (chỉ hoạt động khi không ở chế độ vẽ).<br>
-                <b>6. XÓA:</b> Chọn chế độ Xóa rồi click đối tượng (hoặc click chọn rồi nhấn <span class="help-key">X</span>).
+                <b>4. TIMELINE:</b> Mũi tên & Icon đều có thể gán STT để xuất hiện theo kịch bản.<br>
+                <b>5. BẺ CONG:</b> Giữ <span class="help-key">Z</span> + Di chuột (khi không vẽ).<br>
+                <b>6. XÓA:</b> Chọn chế độ Xóa -> Click đối tượng.
             </div>
         </div>
 
@@ -169,7 +170,7 @@
 
         <div id="options-panel">
             <div class="control-group">
-                <label>Thuộc tính (Chỉnh sửa đối tượng đang chọn):</label>
+                <label>Thuộc tính (Đối tượng đang chọn):</label>
                 
                 <div id="edit-text-container" style="display:none; margin-bottom: 8px;">
                     <label style="color:#00b894;">Sửa nội dung chữ:</label>
@@ -178,8 +179,8 @@
 
                 <div style="display:flex; gap:5px; align-items:center; flex-wrap: wrap;">
                     <input type="color" id="draw-color" value="#c0392b" style="width:40px; height:30px; padding:0;" oninput="updateSelectedFeatureStyle()">
-                    <input type="number" id="draw-size" class="safe-input" value="4" min="1" max="50" title="Kích thước đầu mũi tên/Icon/Chữ" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
-                    <input type="number" id="draw-width" class="safe-input" value="4" min="1" max="20" title="Độ dày đường thẳng" style="width:50px;" placeholder="Dày" oninput="updateSelectedFeatureStyle()">
+                    <input type="number" id="draw-size" class="safe-input" value="4" min="1" max="50" title="Kích thước" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
+                    <input type="number" id="draw-width" class="safe-input" value="4" min="1" max="20" title="Độ dày (Mũi tên)" style="width:50px;" placeholder="Dày" oninput="updateSelectedFeatureStyle()">
                 </div>
                 <div id="arrow-specific-options" style="display:none; margin-top:5px;">
                      <label><input type="checkbox" id="draw-dashed"> Nét đứt (Rút lui/Bí mật)</label>
@@ -229,15 +230,18 @@
                     <button onclick="showAllTimeline()" style="width:30px; margin:0; background:#f39c12; color:#000;" title="Hiện tất cả (Mắt)"><i class="fas fa-eye"></i></button>
                 </div>
             </div>
-            <label style="font-size:11px; color:#aaa; margin-top:4px;">
-                <input type="checkbox" id="chk-glow-effect" onchange="toggleGlowMode()"> Bật chế độ Làm tối (Ẩn các bước khác) - Phím U
+            <label style="font-size:11px; color:#aaa; display:block;">
+                <input type="checkbox" id="chk-glow-effect" onchange="toggleGlowMode()"> Hiệu ứng "Làm tối" (Phím U)
             </label>
-            <div style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2);">
+            <label style="font-size:11px; color:#aaa; display:block;">
+                <input type="checkbox" id="chk-sound-effect"> Bật âm thanh hành quân (5s)
+            </label>
+            <div style="max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.2); margin-top:5px;">
                 <table class="timeline-table">
                     <thead>
                         <tr style="color:#aaa; border-bottom:1px solid #555;">
                             <th align="center" width="40">STT</th>
-                            <th align="left">Tên (Sửa được)</th>
+                            <th align="left">Đối Tượng</th>
                             <th width="30">Xóa</th>
                         </tr>
                     </thead>
@@ -246,7 +250,18 @@
             </div>
         </div>
         
-        <div class="control-group" style="margin-top:auto;">
+        <div class="control-group" style="margin-top:auto; border-top: 2px solid #8b4513;">
+             <h3><i class="fas fa-music"></i> Nhạc Nền (BGM)</h3>
+             <label style="display:flex; justify-content:space-between;">
+                 <span>Bật/Tắt:</span>
+                 <input type="checkbox" id="bgm-toggle" onchange="toggleBGM()">
+             </label>
+             <label>Âm lượng: <span id="bgm-vol-display">15%</span></label>
+             <input type="range" id="bgm-volume" min="0" max="100" value="15" oninput="setBGMVolume(this.value)">
+             <div id="youtube-player" style="display:none;"></div>
+        </div>
+
+        <div class="control-group">
              <button class="btn-action" onclick="exportJSON()">Lưu Bản Đồ (JSON)</button>
              <input type="file" id="file-input" style="display: none;" onchange="importJSON(this)">
              <button class="btn-action" style="background:#333; margin-top:5px;" onclick="document.getElementById('file-input').click()">Mở Bản Đồ</button>
@@ -277,6 +292,8 @@
         </div>
     </div>
 
+    <script src="https://www.youtube.com/iframe_api"></script>
+
     <script>
         // --- 1. CONFIG & INIT ---
         const map = new maplibregl.Map({
@@ -287,7 +304,6 @@
         });
 
         let mapData = { features: [] };
-        // FIX: Tách riêng mảng lưu Marker instances để không stringify vào JSON
         let markers = {}; 
 
         let isDrawing = false;
@@ -306,6 +322,11 @@
         let suppressDeleteWarning = false; 
         
         let isGlowingEnabled = false;
+        
+        // Audio Vars
+        let marchingAudio = new Audio('marching-loop-32908.mp3');
+        let marchingTimeout;
+        let player; // YouTube Player
 
         map.on('load', () => {
             map.addSource('vietnam-border', { type: 'geojson', data: 'https://raw.githubusercontent.com/vietnam-geospatial/vietnam-administrative-boundaries/master/vietnam_boundary.geojson' });
@@ -315,12 +336,8 @@
             
             createStaticLegend();
             
-            document.getElementById('toggle-btn').addEventListener('click', function() {
-                document.getElementById('sidebar').classList.toggle('collapsed');
-            });
-            document.getElementById('label-toggle-btn').addEventListener('click', function() {
-                toggleMapLabels();
-            });
+            document.getElementById('toggle-btn').addEventListener('click', function() { document.getElementById('sidebar').classList.toggle('collapsed'); });
+            document.getElementById('label-toggle-btn').addEventListener('click', function() { toggleMapLabels(); });
 
             document.getElementById('btn-confirm-delete').addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -334,6 +351,40 @@
                 document.getElementById('delete-confirm-modal').style.display = 'none';
             });
         });
+
+        // --- YOUTUBE BGM ---
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-player', {
+                height: '0', width: '0',
+                videoId: 'HqKsP3Ed1nk',
+                playerVars: { 'playsinline': 1, 'controls': 0, 'loop': 1, 'playlist': 'HqKsP3Ed1nk' },
+                events: { 'onReady': onPlayerReady }
+            });
+        }
+        function onPlayerReady(event) {
+            event.target.setVolume(15);
+        }
+        function toggleBGM() {
+            if(!player) return;
+            const checkbox = document.getElementById('bgm-toggle');
+            if(checkbox.checked) player.playVideo(); else player.pauseVideo();
+        }
+        function setBGMVolume(val) {
+            document.getElementById('bgm-vol-display').innerText = val + '%';
+            if(player) player.setVolume(val);
+        }
+
+        // --- MARCHING SOUND ---
+        function playMarchingSound() {
+            if(!document.getElementById('chk-sound-effect').checked) return;
+            marchingAudio.currentTime = 0;
+            marchingAudio.play().catch(e => console.log("Audio play blocked"));
+            if(marchingTimeout) clearTimeout(marchingTimeout);
+            marchingTimeout = setTimeout(() => {
+                marchingAudio.pause();
+                marchingAudio.currentTime = 0;
+            }, 5000);
+        }
 
         // --- INTERACTION ---
         function toggleDrawing() {
@@ -402,7 +453,6 @@
         }
         map.on('zoom', updateMarkerScales);
 
-        // --- SELECTION & EDITING ---
         function selectFeature(id) {
             if (selectedFeatureId) {
                 const oldEl = document.getElementById(selectedFeatureId);
@@ -410,23 +460,19 @@
                 const head = document.getElementById(selectedFeatureId + '-head');
                 if(head) head.classList.remove('selected-edit');
             }
-
             selectedFeatureId = id;
             const container = document.getElementById('edit-text-container');
             container.style.display = 'none'; 
-
             if (id) {
                 const feature = mapData.features.find(f => f.id === id);
                 if (feature) {
                     document.getElementById('draw-color').value = feature.style.color || '#000000';
                     document.getElementById('draw-size').value = feature.style.size || 4;
                     document.getElementById('draw-width').value = feature.style.width || 4;
-                    
                     const el = document.getElementById(id);
                     if(el) el.classList.add('selected-edit');
                     const head = document.getElementById(id + '-head');
                     if(head) head.classList.add('selected-edit');
-
                     if (feature.type === 'text') {
                         container.style.display = 'block';
                         document.getElementById('edit-text-content').value = feature.data.text;
@@ -450,15 +496,12 @@
             if (!selectedFeatureId) return;
             const feature = mapData.features.find(f => f.id === selectedFeatureId);
             if (!feature) return;
-
             const color = document.getElementById('draw-color').value;
             const size = document.getElementById('draw-size').value;
             const width = document.getElementById('draw-width').value;
-
             feature.style.color = color;
             feature.style.size = size;
             feature.style.width = width;
-
             if (feature.type === 'arrow') {
                 if(map.getLayer(feature.id)) {
                     map.setPaintProperty(feature.id, 'line-color', color);
@@ -482,12 +525,8 @@
                     el.style.fontSize = (parseInt(size) * 5) + 'px';
                 }
             } else if (feature.type === 'polygon') {
-                if(map.getLayer(feature.id + '-fill')) {
-                    map.setPaintProperty(feature.id + '-fill', 'fill-color', color);
-                }
-                if(map.getLayer(feature.id + '-outline')) {
-                    map.setPaintProperty(feature.id + '-outline', 'line-color', color);
-                }
+                if(map.getLayer(feature.id + '-fill')) { map.setPaintProperty(feature.id + '-fill', 'fill-color', color); }
+                if(map.getLayer(feature.id + '-outline')) { map.setPaintProperty(feature.id + '-outline', 'line-color', color); }
             }
         }
 
@@ -495,12 +534,10 @@
             if (!selectedFeatureId) return;
             const feature = mapData.features.find(f => f.id === selectedFeatureId);
             if (!feature) return;
-
             const zoom = map.getZoom();
             const factor = 0.0001 * Math.pow(2, 20 - zoom); 
             const shiftLng = dx * factor;
             const shiftLat = dy * factor;
-
             if (feature.type === 'arrow' || feature.type === 'polygon') {
                 const moveCoord = (coord) => [coord[0] + shiftLng, coord[1] + shiftLat];
                 let newCoords;
@@ -510,56 +547,41 @@
                     map.getSource(feature.id).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: newCoords } });
                     const last = newCoords[newCoords.length - 1];
                     if (markers[feature.id]) markers[feature.id].setLngLat(last);
-                } 
-                else if (feature.type === 'polygon') {
+                } else if (feature.type === 'polygon') {
                     newCoords = feature.data.map(ring => ring.map(moveCoord));
                     feature.data = newCoords;
                     map.getSource(feature.id).setData({ type: 'Feature', geometry: { type: 'Polygon', coordinates: newCoords } });
                 }
-            } 
-            else if (feature.type === 'marker' || feature.type === 'text') {
+            } else if (feature.type === 'marker' || feature.type === 'text') {
                 feature.data.lng += shiftLng;
                 feature.data.lat += shiftLat;
-                if (markers[feature.id]) {
-                    markers[feature.id].setLngLat([feature.data.lng, feature.data.lat]);
-                }
+                if (markers[feature.id]) { markers[feature.id].setLngLat([feature.data.lng, feature.data.lat]); }
             }
         }
 
         map.on('click', (e) => {
             if (isFreehandDrawing) return;
-            
             if (!isDrawing && currentDrawType !== 'delete') {
                 const point = e.point;
                 const arrowFeatures = map.queryRenderedFeatures(point, { layers: mapData.features.filter(f=>f.type==='arrow').map(f=>f.id) });
-                if (arrowFeatures.length > 0) {
-                    selectFeature(arrowFeatures[0].layer.id);
-                    return;
-                }
+                if (arrowFeatures.length > 0) { selectFeature(arrowFeatures[0].layer.id); return; }
                 const polyLayers = mapData.features.filter(f=>f.type==='polygon').map(f=>f.id + '-fill');
                 const polyFeatures = map.queryRenderedFeatures(point, { layers: polyLayers });
-                if (polyFeatures.length > 0) {
-                    selectFeature(polyFeatures[0].layer.id.replace('-fill', ''));
-                    return;
-                }
+                if (polyFeatures.length > 0) { selectFeature(polyFeatures[0].layer.id.replace('-fill', '')); return; }
                 selectFeature(null);
                 return;
             }
-
             if (currentDrawType === 'delete') { handleDeleteSelection(e); return; }
             if (currentDrawType === 'polygon') return;
-
             const color = document.getElementById('draw-color').value;
             const size = document.getElementById('draw-size').value;
             const label = document.getElementById('draw-label').value;
-
             if (currentDrawType === 'marker') {
                 const id = 'marker-' + Date.now();
                 const m = addIconMarker(e.lngLat, selectedIcon, color, size, label, id);
                 saveFeature(id, 'marker', {lng: e.lngLat.lng, lat: e.lngLat.lat, icon: selectedIcon}, {color, size}, label, 0);
                 updateMarkerScales();
-            }
-            else if (currentDrawType === 'text') {
+            } else if (currentDrawType === 'text') {
                 const text = document.getElementById('text-content').value || "Địa danh";
                 const font = document.getElementById('text-font').value;
                 const isBold = document.getElementById('text-bold').checked;
@@ -568,8 +590,7 @@
                 const m = addTextMarker(e.lngLat, text, color, size, font, isBold, isItalic, id);
                 saveFeature(id, 'text', {lng: e.lngLat.lng, lat: e.lngLat.lat, text}, {color, size, font, isBold, isItalic}, label, 0);
                 updateMarkerScales();
-            }
-            else if (currentDrawType === 'arrow') {
+            } else if (currentDrawType === 'arrow') {
                 currentPoints.push([e.lngLat.lng, e.lngLat.lat]);
                 updateTempLayer('line');
             }
@@ -582,7 +603,6 @@
             const size = document.getElementById('draw-size').value;
             const width = document.getElementById('draw-width').value;
             let label = document.getElementById('draw-label').value;
-
             if (currentDrawType === 'arrow' && currentPoints.length > 1) {
                 arrowCounter++;
                 if(!label) label = `Mũi tiến công ${arrowCounter}`;
@@ -601,18 +621,12 @@
             const isDashed = document.getElementById('poly-dashed').checked;
             const isFill = document.getElementById('poly-fill').checked;
             const id = 'poly-' + Date.now();
-            
             let coords = currentPoints;
-            if (isFill) {
-                coords.push(coords[0]);
-                coords = [coords];
-            }
-            
+            if (isFill) { coords.push(coords[0]); coords = [coords]; }
             try {
                 const tempLine = turf.lineString(currentPoints);
                 const simplified = turf.simplify(tempLine, {tolerance: 0.005, highQuality: false});
                 let finalGeoCoords = simplified.geometry.coordinates;
-                
                 if (isFill) {
                      finalGeoCoords.push(finalGeoCoords[0]);
                      coords = [finalGeoCoords];
@@ -620,22 +634,15 @@
                 } else {
                      coords = finalGeoCoords;
                      map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } } });
-                     map.addLayer({
-                         id: id + '-outline', type: 'line', source: id, 
-                         paint: { 'line-color': color, 'line-width': 3, 'line-dasharray': isDashed ? [2, 2] : [1, 0] }
-                     });
+                     map.addLayer({ id: id + '-outline', type: 'line', source: id, paint: { 'line-color': color, 'line-width': 3, 'line-dasharray': isDashed ? [2, 2] : [1, 0] } });
                 }
                 saveFeature(id, 'polygon', coords, {color, opacity: 0.5, isDashed, isFill}, label, 0);
             } catch (e) { console.error(e); }
             stopDrawing();
         }
 
-        // --- KEY HANDLERS (FIXED) ---
         document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.classList.contains('safe-input')) {
-                return; 
-            }
-
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.classList.contains('safe-input')) return; 
             if ((e.key === 'x' || e.key === 'X')) {
                 if (currentDrawType === 'delete' && pendingDeleteId) {
                      if (suppressDeleteWarning) executeDelete(); else document.getElementById('delete-confirm-modal').style.display = 'flex';
@@ -644,7 +651,6 @@
                     if (suppressDeleteWarning) executeDelete(); else document.getElementById('delete-confirm-modal').style.display = 'flex';
                 }
             }
-            
             if (selectedFeatureId) {
                 const speed = 2; 
                 if (e.key === 'ArrowUp') moveSelectedFeature(0, speed);
@@ -652,7 +658,6 @@
                 if (e.key === 'ArrowLeft') moveSelectedFeature(-speed, 0);
                 if (e.key === 'ArrowRight') moveSelectedFeature(speed, 0);
             }
-
             if (e.key === 'u' || e.key === 'U') {
                 const chk = document.getElementById('chk-glow-effect'); chk.checked = !chk.checked; toggleGlowMode();
             }
@@ -684,7 +689,6 @@
                             const step = e.key.toLowerCase() === 'a' ? -5 : 5;
                             const newRot = currentRot + step;
                             icon.style.transform = `rotate(${newRot}deg)`;
-                            // SAVE ROTATION to Data
                             feature.style.rotation = newRot; 
                         }
                     }
@@ -704,7 +708,7 @@
                     const line = turf.lineString([start, mouse, end]);
                     const curved = turf.bezierSpline(line, { resolution: 10000, sharpness: 0.6 });
                     map.getSource(feature.id).setData(curved);
-                    feature.data = curved.geometry.coordinates; // Updated
+                    feature.data = curved.geometry.coordinates; 
                 }
             }
         }
@@ -728,27 +732,21 @@
             const last = coords[coords.length - 1]; const prev = coords[coords.length - 2];
             let bearing = turf.bearing(turf.point(prev), turf.point(last));
             const iconSize = parseInt(headSize) * 6;
-            
             const el = document.createElement('div'); 
             el.className = `map-feature feature-arrow arrow-order-${order}`; 
             el.id = id + '-head';
             el.innerHTML = `<i class="fas fa-long-arrow-alt-up" style="color: ${color}; font-size: ${iconSize}px; display:block; text-shadow:0 0 2px white;"></i>`;
             el.style.cursor = 'pointer'; 
-            
-            // Check saved rotation
             const finalRot = (rotation !== undefined) ? rotation : bearing;
             el.querySelector('i').style.transform = `rotate(${finalRot}deg)`;
             
+            // FIX: Arrow Head adheres to Map (rotation & pitch)
             const marker = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat(last).addTo(map);
-            markers[id] = marker; // FIX: Store in dictionary
+            markers[id] = marker; 
 
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (currentDrawType === 'delete') {
-                    trySelectForDelete(id, el);
-                } else {
-                    selectFeature(id);
-                }
+                if (currentDrawType === 'delete') { trySelectForDelete(id, el); } else { selectFeature(id); }
             });
             return marker;
         }
@@ -756,27 +754,20 @@
         function addPolygonToMap(coords, color, opacity, id, isDashed) {
             map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } } });
             map.moveLayer(id + '-fill', 'vn-border-line'); 
-            map.addLayer({ 
-                id: id + '-fill', type: 'fill', source: id, 
-                paint: { 'fill-color': color, 'fill-opacity': opacity } 
-            }, 'layer-separator');
-            map.addLayer({ 
-                id: id + '-outline', type: 'line', source: id, 
-                paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': isDashed ? [2, 2] : [1, 0] } 
-            }, 'vn-border-line');
+            map.addLayer({ id: id + '-fill', type: 'fill', source: id, paint: { 'fill-color': color, 'fill-opacity': opacity } }, 'layer-separator');
+            map.addLayer({ id: id + '-outline', type: 'line', source: id, paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': isDashed ? [2, 2] : [1, 0] } }, 'vn-border-line');
         }
 
         function addIconMarker(lngLat, icon, color, size, label, id, rotation) {
             const el = document.createElement('div'); el.className = `map-feature`; el.id = id;
             const px = parseInt(size) * 8; 
             el.innerHTML = `<i class="fas fa-${icon}" style="color:${color}; font-size:${px}px; text-shadow: 1px 1px 1px black;"></i>`;
-            
-            if(rotation !== undefined) {
-                el.querySelector('i').style.transform = `rotate(${rotation}deg)`;
-            }
+            if(rotation !== undefined) { el.querySelector('i').style.transform = `rotate(${rotation}deg)`; }
 
+            // FIX: Normal Icons adhere to Viewport (Always upright)
+            // Default behavior of Marker is 'auto' ('viewport'), so we just don't set rotationAlignment.
             const marker = new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
-            markers[id] = marker; // FIX
+            markers[id] = marker; 
 
             const currentZoom = map.getZoom();
             const scaleFactor = Math.max(0.5, Math.pow(1.3, currentZoom - 7.2));
@@ -784,11 +775,7 @@
             
             el.addEventListener('click', (e) => { 
                 e.stopPropagation(); 
-                if (currentDrawType === 'delete') {
-                    trySelectForDelete(id, el);
-                } else {
-                    selectFeature(id);
-                }
+                if (currentDrawType === 'delete') { trySelectForDelete(id, el); } else { selectFeature(id); }
             });
             return marker;
         }
@@ -797,25 +784,18 @@
             const el = document.createElement('div'); el.className = `custom-text-marker`; el.id = id;
             el.style.color = color; el.style.fontSize = (parseInt(size) * 5) + 'px'; el.style.fontFamily = font; el.style.fontWeight = bold ? 'bold' : 'normal'; el.style.fontStyle = italic ? 'italic' : 'normal'; el.innerText = text; el.style.cursor = 'pointer';
             const marker = new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
-            markers[id] = marker; // FIX
-
+            markers[id] = marker; 
             const currentZoom = map.getZoom();
             const scaleFactor = Math.max(0.5, Math.pow(1.3, currentZoom - 7.2));
             el.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
-            
             el.addEventListener('click', (e) => { 
                 e.stopPropagation(); 
-                if (currentDrawType === 'delete') {
-                    trySelectForDelete(id, el);
-                } else {
-                    selectFeature(id);
-                }
+                if (currentDrawType === 'delete') { trySelectForDelete(id, el); } else { selectFeature(id); }
             });
             return marker;
         }
 
         function saveFeature(id, type, data, style, label, order) {
-            // FIX: Don't store markerInstance in mapData
             const feat = { id, type, data, style, label, order };
             const existingIdx = mapData.features.findIndex(f => f.id === id);
             if (existingIdx > -1) { mapData.features[existingIdx] = feat; } else { mapData.features.push(feat); }
@@ -824,8 +804,9 @@
 
         function renderTimelineTable() {
             const tbody = document.getElementById('timeline-list'); tbody.innerHTML = '';
-            const arrows = mapData.features.filter(f => f.type === 'arrow').sort((a,b) => a.order - b.order);
-            arrows.forEach(feat => {
+            // FIX: Allow both Arrows and Markers in Timeline
+            const items = mapData.features.filter(f => f.type === 'arrow' || f.type === 'marker').sort((a,b) => a.order - b.order);
+            items.forEach(feat => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td align="center"><input type="number" class="order-input" value="${feat.order}" onchange="updateFeatureOrder('${feat.id}', this.value)"></td>
@@ -852,22 +833,15 @@
             if(map.getLayer(id+'-fill')) map.removeLayer(id+'-fill'); 
             if(map.getLayer(id+'-outline')) map.removeLayer(id+'-outline'); 
             if(map.getSource(id)) map.removeSource(id);
-            
             const el = document.getElementById(id); if(el) el.remove(); 
             const headEl = document.getElementById(id+'-head'); if(headEl) headEl.remove();
-            
-            // FIX: Remove from markers dict
             if(markers[id]) { markers[id].remove(); delete markers[id]; }
-
             if(selectedFeatureId === id) selectFeature(null);
-
             mapData.features = mapData.features.filter(f => f.id !== id); 
             renderTimelineTable();
         }
 
-        function executeDelete() {
-            if (pendingDeleteId) { deleteFeature(pendingDeleteId); pendingDeleteId = null; }
-        }
+        function executeDelete() { if (pendingDeleteId) { deleteFeature(pendingDeleteId); pendingDeleteId = null; } }
 
         function handleDeleteSelection(e) {
              const point = e.point; clearDeleteSelection();
@@ -878,15 +852,11 @@
         }
         
         function trySelectForDelete(id, element) {
-             clearDeleteSelection(); 
-             pendingDeleteId = id; 
-             element.classList.add('selected-danger');
+             clearDeleteSelection(); pendingDeleteId = id; element.classList.add('selected-danger');
              new maplibregl.Popup({closeButton:false, closeOnClick:true, offset: 25}).setLngLat(map.getCenter()).setHTML('<div style="color:red; font-weight:bold;">Nhấn X để xóa</div>').addTo(map);
         }
-
         function selectForDelete(id) {
-             pendingDeleteId = id;
-             map.setPaintProperty(id, 'line-color', '#ff0000');
+             pendingDeleteId = id; map.setPaintProperty(id, 'line-color', '#ff0000');
              new maplibregl.Popup({closeButton:false}).setLngLat(map.getCenter()).setHTML('<div style="color:red; font-weight:bold;">Nhấn X để xóa</div>').addTo(map);
         }
         function clearDeleteSelection() { }
@@ -897,6 +867,7 @@
             if (currentTimelineStep > arrowCounter + 5) currentTimelineStep = 999;
             document.getElementById('current-step-display').innerText = currentTimelineStep === 999 ? "Hiện tất cả" : `Bước: ${currentTimelineStep}`;
             updateVisibility();
+            playMarchingSound();
         }
         function showAllTimeline() { currentTimelineStep = 999; document.getElementById('current-step-display').innerText = "Hiện tất cả"; updateVisibility(); }
         function toggleGlowMode() { isGlowingEnabled = document.getElementById('chk-glow-effect').checked; updateVisibility(); }
@@ -906,15 +877,14 @@
                 const step = feat.order;
                 const isVisible = (currentTimelineStep === 999) || (step <= currentTimelineStep);
                 
+                // Arrows
                 if (feat.type === 'arrow') {
                     if (map.getLayer(feat.id)) {
                         map.setLayoutProperty(feat.id, 'visibility', isVisible ? 'visible' : 'none');
                         if (isVisible && isGlowingEnabled && currentTimelineStep !== 999 && step !== currentTimelineStep) {
-                             map.setPaintProperty(feat.id, 'line-color', '#555555'); 
-                             map.setPaintProperty(feat.id, 'line-opacity', 0.4);
+                             map.setPaintProperty(feat.id, 'line-color', '#555555'); map.setPaintProperty(feat.id, 'line-opacity', 0.4);
                         } else if (isVisible) {
-                             map.setPaintProperty(feat.id, 'line-color', feat.style.color); 
-                             map.setPaintProperty(feat.id, 'line-opacity', 1);
+                             map.setPaintProperty(feat.id, 'line-color', feat.style.color); map.setPaintProperty(feat.id, 'line-opacity', 1);
                         }
                     }
                     const head = document.getElementById(feat.id + '-head');
@@ -926,9 +896,21 @@
                         }
                     }
                 }
+                // Markers (Icons)
+                else if (feat.type === 'marker') {
+                    const el = document.getElementById(feat.id);
+                    if(el) {
+                        el.style.display = isVisible ? 'flex' : 'none'; // Marker uses flex center
+                        el.classList.remove('feature-dimmed');
+                        if (isVisible && isGlowingEnabled && currentTimelineStep !== 999 && step !== currentTimelineStep && step > 0) {
+                            el.classList.add('feature-dimmed');
+                        }
+                    }
+                }
             });
         }
 
+        // ... (Static Legend & Export functions unchanged) ...
         function createStaticLegend() {
             const container = document.getElementById('static-legend-container');
             const items = [
@@ -967,7 +949,17 @@
             const layers = map.getStyle().layers; layers.forEach(layer => { if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', labelsVisible ? 'visible' : 'none'); });
         }
         function selectIcon(name) { selectedIcon = name; document.querySelectorAll('.icon-option').forEach(el=>el.classList.remove('selected')); event.currentTarget.classList.add('selected'); }
-        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v20.json"; link.click(); }
+        function updateUI() {
+            const mode = document.getElementById('draw-mode').value;
+            if (mode === 'delete') { document.getElementById('options-panel').style.display = 'none'; return; }
+            document.getElementById('options-panel').style.display = mode === 'none' ? 'none' : 'block';
+            // FIX: Ensure icon-options is shown correctly
+            document.getElementById('icon-options').style.display = mode === 'marker' ? 'grid' : 'none'; // Grid instead of block
+            document.getElementById('text-options').style.display = mode === 'text' ? 'block' : 'none';
+            document.getElementById('arrow-specific-options').style.display = mode === 'arrow' ? 'block' : 'none';
+            document.getElementById('polygon-specific-options').style.display = mode === 'polygon' ? 'block' : 'none';
+        }
+        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v21.json"; link.click(); }
         function importJSON(input) {
             const file = input.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -975,8 +967,7 @@
                 try {
                     const data = JSON.parse(e.target.result);
                     mapData.features.forEach(f => deleteFeature(f.id));
-                    mapData = { features: [] }; arrowCounter = 0; markers = {}; // FIX: Clear markers
-                    
+                    mapData = { features: [] }; arrowCounter = 0; markers = {}; 
                     data.features.forEach(f => {
                         if (f.order > arrowCounter) arrowCounter = f.order;
                         if (f.type === 'arrow') {
@@ -984,7 +975,7 @@
                             saveFeature(f.id, 'arrow', f.data, f.style, f.label, f.order);
                         } else if (f.type === 'marker') {
                             addIconMarker({lng: f.data.lng, lat: f.data.lat}, f.data.icon, f.style.color, f.style.size, f.label, f.id, f.style.rotation);
-                            saveFeature(f.id, 'marker', f.data, f.style, f.label, 0);
+                            saveFeature(f.id, 'marker', f.data, f.style, f.label, f.order || 0); // Include order
                         } else if (f.type === 'text') {
                             if(f.data && f.data.lng) {
                                 addTextMarker({lng: f.data.lng, lat: f.data.lat}, f.data.text, f.style.color, f.style.size, f.style.font, f.style.isBold, f.style.isItalic, f.id);

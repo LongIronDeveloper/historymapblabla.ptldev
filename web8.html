@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v24 (Fix Audio)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v25 (Fix Icons & Legend)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -177,7 +177,7 @@
 
                 <div style="display:flex; gap:5px; align-items:center; flex-wrap: wrap;">
                     <input type="color" id="draw-color" value="#c0392b" style="width:40px; height:30px; padding:0;" oninput="updateSelectedFeatureStyle()">
-                    <input type="number" id="draw-size" class="safe-input" value="4" min="1" max="50" title="Kích thước" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
+                    <input type="number" id="draw-size" class="safe-input" value="4" min="1" max="50" title="Kích thước đầu mũi tên/Icon/Chữ" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
                     <input type="number" id="draw-width" class="safe-input" value="4" min="1" max="20" title="Độ dày" style="width:50px;" placeholder="Dày" oninput="updateSelectedFeatureStyle()">
                 </div>
                 <div id="arrow-specific-options" style="display:none; margin-top:5px;">
@@ -372,7 +372,6 @@
 
         // --- YOUTUBE API ---
         function onYouTubeIframeAPIReady() {
-            // Background Music
             player = new YT.Player('youtube-player', {
                 height: '0', width: '0',
                 videoId: 'HqKsP3Ed1nk',
@@ -380,7 +379,6 @@
                 events: { 'onReady': onPlayerReady }
             });
 
-            // Marching Sound
             marchingPlayer = new YT.Player('marching-player-div', {
                 height: '0', width: '0',
                 videoId: 'wFMIwdpkoUM',
@@ -388,7 +386,6 @@
                 events: { 'onReady': function(e) { e.target.setVolume(100); } }
             });
 
-            // Combat Sound
             combatPlayer = new YT.Player('combat-player-div', {
                 height: '0', width: '0',
                 videoId: 'ukHe5XqGic4',
@@ -408,7 +405,6 @@
             if(player) player.setVolume(val);
         }
 
-        // --- MARCHING SOUND (5s) ---
         function playMarchingSound() {
             if(!document.getElementById('chk-sound-effect').checked) return;
             if(marchingPlayer && typeof marchingPlayer.playVideo === 'function') {
@@ -426,7 +422,6 @@
             }
         }
 
-        // --- COMBAT SOUND (7s) ---
         function toggleCombatSound() {
             const chk = document.getElementById('chk-combat-sound');
             if (chk.checked) playCombatSound();
@@ -444,7 +439,7 @@
                 combatTimeout = setTimeout(() => {
                     combatPlayer.pauseVideo();
                     document.getElementById('chk-combat-sound').checked = false;
-                }, 7000); // 7s
+                }, 7000); 
             }
         }
 
@@ -832,12 +827,14 @@
             map.addLayer({ id: id + '-outline', type: 'line', source: id, paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': isDashed ? [2, 2] : [1, 0] } }, 'vn-border-line');
         }
 
+        // Updated Icon function for specific Rotation Logic
         function addIconMarker(lngLat, icon, color, size, label, id, rotation) {
             const el = document.createElement('div'); el.className = `map-feature`; el.id = id;
             const px = parseInt(size) * 8; 
             el.innerHTML = `<i class="fas fa-${icon}" style="color:${color}; font-size:${px}px; text-shadow: 1px 1px 1px black;"></i>`;
             if(rotation !== undefined) { el.querySelector('i').style.transform = `rotate(${rotation}deg)`; }
 
+            // FIX: Only 'location-arrow' adheres to map rotation. Others adhere to viewport (auto).
             const alignment = (icon === 'location-arrow') ? 'map' : 'auto';
             const marker = new maplibregl.Marker({ 
                 element: el,
@@ -997,6 +994,7 @@
             const container = document.getElementById('static-legend-container');
             const items = [
                 { icon: '<i class="fas fa-fire" style="color:#e67e22"></i>', text: 'Nơi Lê Lợi dựng cờ', type: 'marker', color: '#e67e22', iconName: 'fire' },
+                { icon: '<i class="fas fa-flag" style="color:#c0392b"></i>', text: 'Sở chỉ huy nghĩa quân', type: 'marker', color: '#c0392b', iconName: 'flag' },
                 { icon: '<i class="fas fa-mountain" style="color:#5d4037"></i> <i class="fas fa-long-arrow-alt-right" style="color:#c0392b; border-bottom: 2px dashed #c0392b"></i>', text: 'Nghĩa quân rút lên núi', type: 'arrow', color: '#c0392b', dashed: true },
                 { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#c0392b; transform: rotate(-45deg);"></i>', text: 'Hướng tiến của nghĩa quân', type: 'arrow', color: '#c0392b', dashed: false },
                 { icon: '<i class="fas fa-location-arrow" style="color:#c0392b"></i>', text: 'Nghĩa quân chặn đánh', type: 'marker', color: '#c0392b', iconName: 'location-arrow' },

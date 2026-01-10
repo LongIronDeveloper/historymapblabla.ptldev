@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v25 (Fix Icons & Legend)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v28 (Final Fix Icons & Layering)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    
     <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
@@ -42,11 +44,57 @@
         button.btn-action { background: #5d4037; font-weight: bold; border: 1px solid #8d6e63; cursor: pointer; color: #f1c40f; }
         button.btn-action:hover { background: #795548; }
 
-        /* Icon Grid */
-        .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
-        .icon-option { background: #4a3b32; border: 1px solid #6d4c41; padding: 8px; text-align: center; cursor: pointer; border-radius: 4px; }
-        .icon-option.selected { background: #f1c40f; color: #2c3e50; border-color: #fff; box-shadow: 0 0 8px #f1c40f; }
+        /* --- ICON GRID FIX (UPDATED BY EXPERT) --- */
+        .icon-grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 8px; 
+            width: 100%;
+        }
         
+        .icon-option { 
+            position: relative;
+            background: #4a3b32; 
+            border: 1px solid #6d4c41; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            height: 40px; 
+            display: flex; /* Flexbox chuẩn */
+            align-items: center; 
+            justify-content: center;
+            transition: all 0.2s;
+            z-index: 10;
+        }
+        
+        .icon-option:hover { background: #6d5e54; transform: scale(1.05); }
+        
+        .icon-option.selected { 
+            background: #f1c40f; 
+            color: #2c3e50; 
+            border-color: #fff; 
+            box-shadow: 0 0 8px #f1c40f; 
+        }
+        
+        /* Style cho icon bên trong */
+        .icon-option i { 
+            font-size: 20px; 
+            pointer-events: none; /* Tránh click nhầm vào i */
+        }
+        
+        /* Màu mặc định cho icon */
+        .icon-option i.fa-fire { color: #e67e22; }
+        .icon-option i.fa-flag { color: #c0392b; }
+        .icon-option i.fa-star { color: #f1c40f; }
+        .icon-option i.fa-chess-rook { color: #7f8c8d; }
+        .icon-option i.fa-skull { color: #fff; }
+        .icon-option i.fa-campground { color: #27ae60; }
+        .icon-option i.fa-mountain { color: #5d4037; }
+        .icon-option i.fa-location-arrow { color: #c0392b; }
+        .icon-option i.fa-times { color: #c0392b; }
+        
+        /* Khi được chọn, icon chuyển màu tối để tương phản với nền vàng */
+        .icon-option.selected i { color: #2c3e50 !important; }
+
         .help-box { font-size: 12px; color: #bdc3c7; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; line-height: 1.5; border-left: 3px solid #e74c3c; }
         .help-key { display: inline-block; background: #eee; color: #333; padding: 0 4px; border-radius: 2px; font-weight: bold; font-family: monospace; font-size: 10px; }
 
@@ -130,6 +178,12 @@
             transform: translate(-50%, -50%); 
             pointer-events: auto; background: transparent;
         }
+
+        /* --- KEY FIX FOR OVERLAYING ICONS --- */
+        .drawing-mode .map-feature,
+        .drawing-mode .custom-text-marker {
+            pointer-events: none !important;
+        }
     </style>
 </head>
 <body>
@@ -177,7 +231,7 @@
 
                 <div style="display:flex; gap:5px; align-items:center; flex-wrap: wrap;">
                     <input type="color" id="draw-color" value="#c0392b" style="width:40px; height:30px; padding:0;" oninput="updateSelectedFeatureStyle()">
-                    <input type="number" id="draw-size" class="safe-input" value="4" min="1" max="50" title="Kích thước đầu mũi tên/Icon/Chữ" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
+                    <input type="number" id="draw-size" class="safe-input" value="4" min="1" max="50" title="Kích thước" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
                     <input type="number" id="draw-width" class="safe-input" value="4" min="1" max="20" title="Độ dày" style="width:50px;" placeholder="Dày" oninput="updateSelectedFeatureStyle()">
                 </div>
                 <div id="arrow-specific-options" style="display:none; margin-top:5px;">
@@ -193,15 +247,15 @@
             <div class="control-group" id="icon-options" style="display:none;">
                 <label>Biểu tượng:</label>
                 <div class="icon-grid">
-                    <div class="icon-option selected" onclick="selectIcon('fire')" title="Nơi khởi nghĩa"><i class="fas fa-fire" style="color:#e67e22"></i></div>
-                    <div class="icon-option" onclick="selectIcon('flag')" title="Sở chỉ huy"><i class="fas fa-flag" style="color:#c0392b"></i></div>
-                    <div class="icon-option" onclick="selectIcon('star')" title="Chiến thắng"><i class="fas fa-star" style="color:#f1c40f"></i></div>
-                    <div class="icon-option" onclick="selectIcon('chess-rook')" title="Thành trì"><i class="fas fa-chess-rook" style="color:#7f8c8d"></i></div>
-                    <div class="icon-option" onclick="selectIcon('skull')" title="Tiêu diệt"><i class="fas fa-skull" style="color:#fff"></i></div>
-                    <div class="icon-option" onclick="selectIcon('campground')" title="Doanh trại"><i class="fas fa-campground" style="color:#27ae60"></i></div>
-                    <div class="icon-option" onclick="selectIcon('mountain')" title="Núi/Địa hình"><i class="fas fa-mountain" style="color:#5d4037"></i></div>
-                    <div class="icon-option" onclick="selectIcon('location-arrow')" title="Chặn đánh"><i class="fas fa-location-arrow" style="color:#c0392b"></i></div>
-                    <div class="icon-option" onclick="selectIcon('times')" title="Dấu X (Diệt)"><i class="fas fa-times" style="color:#c0392b"></i></div>
+                    <div class="icon-option selected" onclick="selectIcon('fire')" title="Nơi khởi nghĩa"><i class="fas fa-fire"></i></div>
+                    <div class="icon-option" onclick="selectIcon('flag')" title="Sở chỉ huy (Cờ)"><i class="fas fa-flag"></i></div>
+                    <div class="icon-option" onclick="selectIcon('star')" title="Chiến thắng"><i class="fas fa-star"></i></div>
+                    <div class="icon-option" onclick="selectIcon('chess-rook')" title="Thành trì"><i class="fas fa-chess-rook"></i></div>
+                    <div class="icon-option" onclick="selectIcon('skull')" title="Tiêu diệt"><i class="fas fa-skull"></i></div>
+                    <div class="icon-option" onclick="selectIcon('campground')" title="Doanh trại"><i class="fas fa-campground"></i></div>
+                    <div class="icon-option" onclick="selectIcon('mountain')" title="Núi/Địa hình"><i class="fas fa-mountain"></i></div>
+                    <div class="icon-option" onclick="selectIcon('location-arrow')" title="Chặn đánh"><i class="fas fa-location-arrow"></i></div>
+                    <div class="icon-option" onclick="selectIcon('times')" title="Dấu X (Diệt)"><i class="fas fa-times"></i></div>
                 </div>
             </div>
 
@@ -340,11 +394,49 @@
         let suppressDeleteWarning = false; 
         
         let isGlowingEnabled = false;
-        
+        let zIndexCounter = 100;
+
         // Audio Vars
         let marchingTimeout;
         let combatTimeout;
         let player, marchingPlayer, combatPlayer; 
+
+        // --- ADDED FUNCTION: UPDATE UI ---
+        function updateUI() {
+            const mode = document.getElementById('draw-mode').value;
+            const btn = document.getElementById('action-btn');
+
+            // 1. Ẩn tất cả trước
+            document.getElementById('icon-options').style.display = 'none';
+            document.getElementById('text-options').style.display = 'none';
+            document.getElementById('arrow-specific-options').style.display = 'none';
+            document.getElementById('polygon-specific-options').style.display = 'none';
+            
+            // Reset edit container
+            document.getElementById('edit-text-container').style.display = 'none';
+
+            // 2. Hiện bảng tương ứng
+            if (mode === 'marker') {
+                document.getElementById('icon-options').style.display = 'block';
+            } else if (mode === 'text') {
+                document.getElementById('text-options').style.display = 'block';
+            } else if (mode === 'arrow') {
+                document.getElementById('arrow-specific-options').style.display = 'block';
+            } else if (mode === 'polygon') {
+                document.getElementById('polygon-specific-options').style.display = 'block';
+            }
+            
+            // 3. Cập nhật nút vẽ
+            if (mode === 'delete') {
+                btn.innerText = "CHẾ ĐỘ XÓA (Bấm vào đối tượng)";
+                btn.style.background = "#e74c3c";
+            } else {
+                if (!isDrawing) {
+                    btn.innerText = "Bắt đầu vẽ";
+                    btn.style.background = "#5d4037";
+                }
+            }
+        }
 
         map.on('load', () => {
             map.addSource('vietnam-border', { type: 'geojson', data: 'https://raw.githubusercontent.com/vietnam-geospatial/vietnam-administrative-boundaries/master/vietnam_boundary.geojson' });
@@ -368,6 +460,9 @@
                 e.stopPropagation();
                 document.getElementById('delete-confirm-modal').style.display = 'none';
             });
+
+            // Initialize UI state
+            updateUI();
         });
 
         // --- YOUTUBE API ---
@@ -378,14 +473,12 @@
                 playerVars: { 'playsinline': 1, 'controls': 0, 'loop': 1, 'playlist': 'HqKsP3Ed1nk' },
                 events: { 'onReady': onPlayerReady }
             });
-
             marchingPlayer = new YT.Player('marching-player-div', {
                 height: '0', width: '0',
                 videoId: 'wFMIwdpkoUM',
                 playerVars: { 'playsinline': 1, 'controls': 0 },
                 events: { 'onReady': function(e) { e.target.setVolume(100); } }
             });
-
             combatPlayer = new YT.Player('combat-player-div', {
                 height: '0', width: '0',
                 videoId: 'ukHe5XqGic4',
@@ -393,7 +486,6 @@
                 events: { 'onReady': function(e) { e.target.setVolume(100); } }
             });
         }
-
         function onPlayerReady(event) { event.target.setVolume(15); }
         function toggleBGM() {
             if(!player) return;
@@ -404,55 +496,35 @@
             document.getElementById('bgm-vol-display').innerText = val + '%';
             if(player) player.setVolume(val);
         }
-
         function playMarchingSound() {
             if(!document.getElementById('chk-sound-effect').checked) return;
             if(marchingPlayer && typeof marchingPlayer.playVideo === 'function') {
-                marchingPlayer.seekTo(0);
-                marchingPlayer.playVideo();
+                marchingPlayer.seekTo(0); marchingPlayer.playVideo();
                 if(marchingTimeout) clearTimeout(marchingTimeout);
-                marchingTimeout = setTimeout(() => {
-                    marchingPlayer.pauseVideo();
-                }, 5000);
+                marchingTimeout = setTimeout(() => { marchingPlayer.pauseVideo(); }, 5000);
             }
         }
-        function setMarchingVolume(val) { 
-            if(marchingPlayer && typeof marchingPlayer.setVolume === 'function') {
-                marchingPlayer.setVolume(val * 100); 
-            }
-        }
-
+        function setMarchingVolume(val) { if(marchingPlayer && typeof marchingPlayer.setVolume === 'function') { marchingPlayer.setVolume(val * 100); } }
         function toggleCombatSound() {
             const chk = document.getElementById('chk-combat-sound');
             if (chk.checked) playCombatSound();
-            else {
-                if(combatPlayer && typeof combatPlayer.pauseVideo === 'function') combatPlayer.pauseVideo();
-                if(combatTimeout) clearTimeout(combatTimeout);
-            }
+            else { if(combatPlayer && typeof combatPlayer.pauseVideo === 'function') combatPlayer.pauseVideo(); if(combatTimeout) clearTimeout(combatTimeout); }
         }
-
         function playCombatSound() {
             if(combatPlayer && typeof combatPlayer.playVideo === 'function') {
-                combatPlayer.seekTo(0);
-                combatPlayer.playVideo();
+                combatPlayer.seekTo(0); combatPlayer.playVideo();
                 if(combatTimeout) clearTimeout(combatTimeout);
-                combatTimeout = setTimeout(() => {
-                    combatPlayer.pauseVideo();
-                    document.getElementById('chk-combat-sound').checked = false;
-                }, 7000); 
+                combatTimeout = setTimeout(() => { combatPlayer.pauseVideo(); document.getElementById('chk-combat-sound').checked = false; }, 7000);
             }
         }
-
-        function setCombatVolume(val) { 
-            if(combatPlayer && typeof combatPlayer.setVolume === 'function') {
-                combatPlayer.setVolume(val * 100); 
-            }
-        }
+        function setCombatVolume(val) { if(combatPlayer && typeof combatPlayer.setVolume === 'function') { combatPlayer.setVolume(val * 100); } }
 
         // --- INTERACTION ---
         function toggleDrawing() {
             isDrawing = !isDrawing;
             const btn = document.getElementById('action-btn');
+            const mapContainer = document.getElementById('map'); 
+            
             currentDrawType = document.getElementById('draw-mode').value;
             
             if(currentDrawType === 'delete') {
@@ -460,6 +532,7 @@
                 btn.innerText = "THOÁT CHẾ ĐỘ XÓA (ESC)"; btn.style.background = "#d35400"; btn.style.color = "white";
                 map.getCanvas().style.cursor = 'not-allowed'; 
                 selectFeature(null);
+                mapContainer.classList.remove('drawing-mode');
             }
             else if(isDrawing) {
                 btn.innerText = "DỪNG VẼ (ESC)"; 
@@ -468,6 +541,9 @@
                 if (currentDrawType === 'polygon') map.dragPan.disable();
                 btn.style.background = "#c0392b"; btn.style.color = "white";
                 selectFeature(null);
+                
+                // ADD CLASS TO MAP CONTAINER TO DISABLE POINTER EVENTS ON ICONS
+                mapContainer.classList.add('drawing-mode');
             } else {
                 stopDrawing();
             }
@@ -479,6 +555,10 @@
             btn.innerText = "Bắt đầu vẽ"; btn.style.background = "#5d4037"; btn.style.color = "#f1c40f";
             map.getCanvas().style.cursor = '';
             map.dragPan.enable();
+            
+            // REMOVE CLASS FROM MAP CONTAINER
+            document.getElementById('map').classList.remove('drawing-mode');
+            
             if(map.getLayer(tempId)) map.removeLayer(tempId);
             if(map.getSource(tempId)) map.removeSource(tempId);
         }
@@ -815,6 +895,7 @@
 
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (isDrawing) return; // FIX: Block select when drawing
                 if (currentDrawType === 'delete') { trySelectForDelete(id, el); } else { selectFeature(id); }
             });
             return marker;
@@ -827,14 +908,12 @@
             map.addLayer({ id: id + '-outline', type: 'line', source: id, paint: { 'line-color': color, 'line-width': 2, 'line-dasharray': isDashed ? [2, 2] : [1, 0] } }, 'vn-border-line');
         }
 
-        // Updated Icon function for specific Rotation Logic
         function addIconMarker(lngLat, icon, color, size, label, id, rotation) {
             const el = document.createElement('div'); el.className = `map-feature`; el.id = id;
             const px = parseInt(size) * 8; 
             el.innerHTML = `<i class="fas fa-${icon}" style="color:${color}; font-size:${px}px; text-shadow: 1px 1px 1px black;"></i>`;
             if(rotation !== undefined) { el.querySelector('i').style.transform = `rotate(${rotation}deg)`; }
 
-            // FIX: Only 'location-arrow' adheres to map rotation. Others adhere to viewport (auto).
             const alignment = (icon === 'location-arrow') ? 'map' : 'auto';
             const marker = new maplibregl.Marker({ 
                 element: el,
@@ -844,12 +923,16 @@
             
             markers[id] = marker; 
 
+            // FIX: Z-Index Layering
+            el.style.zIndex = zIndexCounter++;
+
             const currentZoom = map.getZoom();
             const scaleFactor = Math.max(0.5, Math.pow(1.3, currentZoom - 7.2));
             el.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
             
             el.addEventListener('click', (e) => { 
                 e.stopPropagation(); 
+                if (isDrawing) return; // FIX: Block select when drawing
                 if (currentDrawType === 'delete') { trySelectForDelete(id, el); } else { selectFeature(id); }
             });
             return marker;
@@ -860,11 +943,16 @@
             el.style.color = color; el.style.fontSize = (parseInt(size) * 5) + 'px'; el.style.fontFamily = font; el.style.fontWeight = bold ? 'bold' : 'normal'; el.style.fontStyle = italic ? 'italic' : 'normal'; el.innerText = text; el.style.cursor = 'pointer';
             const marker = new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
             markers[id] = marker; 
+            
+            // FIX: Z-Index Layering
+            el.style.zIndex = zIndexCounter++;
+
             const currentZoom = map.getZoom();
             const scaleFactor = Math.max(0.5, Math.pow(1.3, currentZoom - 7.2));
             el.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
             el.addEventListener('click', (e) => { 
                 e.stopPropagation(); 
+                if (isDrawing) return; // FIX: Block select when drawing
                 if (currentDrawType === 'delete') { trySelectForDelete(id, el); } else { selectFeature(id); }
             });
             return marker;
@@ -972,21 +1060,6 @@
                         }
                     }
                 }
-                else if (feat.type === 'marker') {
-                    const el = document.getElementById(feat.id);
-                    if(el) {
-                        if (feat.data.icon === 'location-arrow') {
-                            el.style.display = isVisible ? 'flex' : 'none';
-                            el.classList.remove('feature-dimmed');
-                            if (isVisible && isGlowingEnabled && currentTimelineStep !== 999 && step !== currentTimelineStep && step > 0) {
-                                el.classList.add('feature-dimmed');
-                            }
-                        } else {
-                            el.style.display = 'flex';
-                            el.classList.remove('feature-dimmed');
-                        }
-                    }
-                }
             });
         }
 
@@ -1029,7 +1102,7 @@
             const layers = map.getStyle().layers; layers.forEach(layer => { if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', labelsVisible ? 'visible' : 'none'); });
         }
         function selectIcon(name) { selectedIcon = name; document.querySelectorAll('.icon-option').forEach(el=>el.classList.remove('selected')); event.currentTarget.classList.add('selected'); }
-        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v22.json"; link.click(); }
+        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v26.json"; link.click(); }
         function importJSON(input) {
             const file = input.files[0]; if (!file) return;
             const reader = new FileReader();

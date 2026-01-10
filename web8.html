@@ -3,15 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v21 (Audio & Timeline)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v24 (Fix Audio)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-    
     <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Merriweather:ital,wght@0,400;0,700;1,400&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
@@ -44,7 +42,7 @@
         button.btn-action { background: #5d4037; font-weight: bold; border: 1px solid #8d6e63; cursor: pointer; color: #f1c40f; }
         button.btn-action:hover { background: #795548; }
 
-        /* Icon Grid Fix */
+        /* Icon Grid */
         .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
         .icon-option { background: #4a3b32; border: 1px solid #6d4c41; padding: 8px; text-align: center; cursor: pointer; border-radius: 4px; }
         .icon-option.selected { background: #f1c40f; color: #2c3e50; border-color: #fff; box-shadow: 0 0 8px #f1c40f; }
@@ -149,8 +147,8 @@
                 <b>1. DI CHUYỂN:</b> Chọn đối tượng -> Dùng phím <span class="help-key">↑</span> <span class="help-key">↓</span> <span class="help-key">←</span> <span class="help-key">→</span> (2px).<br>
                 <b>2. CHỈNH SỬA:</b> Click chọn để đổi màu/size. Sửa nội dung chữ ở ô bên dưới.<br>
                 <b>3. XOAY:</b> Chọn icon/mũi tên -> Dùng phím <span class="help-key">A</span> (Trái) / <span class="help-key">D</span> (Phải).<br>
-                <b>4. TIMELINE:</b> Mũi tên & Icon đều có thể gán STT để xuất hiện theo kịch bản.<br>
-                <b>5. BẺ CONG:</b> Giữ <span class="help-key">Z</span> + Di chuột (khi không vẽ).<br>
+                <b>4. TIMELINE:</b> Dành cho Mũi tên & Icon Chặn đánh.<br>
+                <b>5. ÂM THANH:</b> Phím <span class="help-key">R</span>: Chiến đấu (7s).<br>
                 <b>6. XÓA:</b> Chọn chế độ Xóa -> Click đối tượng.
             </div>
         </div>
@@ -170,7 +168,7 @@
 
         <div id="options-panel">
             <div class="control-group">
-                <label>Thuộc tính (Đối tượng đang chọn):</label>
+                <label>Thuộc tính (Chỉnh sửa đối tượng đang chọn):</label>
                 
                 <div id="edit-text-container" style="display:none; margin-bottom: 8px;">
                     <label style="color:#00b894;">Sửa nội dung chữ:</label>
@@ -180,7 +178,7 @@
                 <div style="display:flex; gap:5px; align-items:center; flex-wrap: wrap;">
                     <input type="color" id="draw-color" value="#c0392b" style="width:40px; height:30px; padding:0;" oninput="updateSelectedFeatureStyle()">
                     <input type="number" id="draw-size" class="safe-input" value="4" min="1" max="50" title="Kích thước" style="width:50px;" placeholder="Size" oninput="updateSelectedFeatureStyle()">
-                    <input type="number" id="draw-width" class="safe-input" value="4" min="1" max="20" title="Độ dày (Mũi tên)" style="width:50px;" placeholder="Dày" oninput="updateSelectedFeatureStyle()">
+                    <input type="number" id="draw-width" class="safe-input" value="4" min="1" max="20" title="Độ dày" style="width:50px;" placeholder="Dày" oninput="updateSelectedFeatureStyle()">
                 </div>
                 <div id="arrow-specific-options" style="display:none; margin-top:5px;">
                      <label><input type="checkbox" id="draw-dashed"> Nét đứt (Rút lui/Bí mật)</label>
@@ -230,18 +228,15 @@
                     <button onclick="showAllTimeline()" style="width:30px; margin:0; background:#f39c12; color:#000;" title="Hiện tất cả (Mắt)"><i class="fas fa-eye"></i></button>
                 </div>
             </div>
-            <label style="font-size:11px; color:#aaa; display:block;">
-                <input type="checkbox" id="chk-glow-effect" onchange="toggleGlowMode()"> Hiệu ứng "Làm tối" (Phím U)
-            </label>
-            <label style="font-size:11px; color:#aaa; display:block;">
-                <input type="checkbox" id="chk-sound-effect"> Bật âm thanh hành quân (5s)
+            <label style="font-size:11px; color:#aaa; margin-top:4px;">
+                <input type="checkbox" id="chk-glow-effect" onchange="toggleGlowMode()"> Bật chế độ Làm tối (Ẩn các bước khác) - Phím U
             </label>
             <div style="max-height: 180px; overflow-y: auto; background: rgba(0,0,0,0.2); margin-top:5px;">
                 <table class="timeline-table">
                     <thead>
                         <tr style="color:#aaa; border-bottom:1px solid #555;">
                             <th align="center" width="40">STT</th>
-                            <th align="left">Đối Tượng</th>
+                            <th align="left">Tên (Sửa được)</th>
                             <th width="30">Xóa</th>
                         </tr>
                     </thead>
@@ -251,14 +246,37 @@
         </div>
         
         <div class="control-group" style="margin-top:auto; border-top: 2px solid #8b4513;">
-             <h3><i class="fas fa-music"></i> Nhạc Nền (BGM)</h3>
-             <label style="display:flex; justify-content:space-between;">
-                 <span>Bật/Tắt:</span>
-                 <input type="checkbox" id="bgm-toggle" onchange="toggleBGM()">
+             <h3><i class="fas fa-music"></i> Âm thanh</h3>
+             
+             <label style="font-size:11px; color:#aaa; display:block; margin-top:5px;">
+                <input type="checkbox" id="chk-sound-effect"> Âm thanh hành quân (5s)
              </label>
-             <label>Âm lượng: <span id="bgm-vol-display">15%</span></label>
-             <input type="range" id="bgm-volume" min="0" max="100" value="15" oninput="setBGMVolume(this.value)">
-             <div id="youtube-player" style="display:none;"></div>
+             <div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+                 <span style="font-size:11px; color:#aaa;">Vol:</span>
+                 <input type="range" id="marching-volume" min="0" max="1" step="0.1" value="1" style="width:100px;" oninput="setMarchingVolume(this.value)">
+             </div>
+
+             <div style="margin-top: 5px; border-top: 1px dashed #555; padding-top: 5px;">
+                <label style="font-size:11px; color:#f1c40f; display:block;">
+                   <input type="checkbox" id="chk-combat-sound" onchange="toggleCombatSound()"> Âm thanh chiến đấu (Phím R)
+                </label>
+                <div style="display:flex; align-items:center; gap:5px; margin-bottom:5px;">
+                    <span style="font-size:11px; color:#aaa;">Vol:</span>
+                    <input type="range" id="combat-volume" min="0" max="1" step="0.1" value="1" style="width:100px;" oninput="setCombatVolume(this.value)">
+                </div>
+            </div>
+
+             <div style="margin-top: 5px; border-top: 1px dashed #555; padding-top: 5px;">
+                 <label style="display:flex; justify-content:space-between; font-size:11px; color:#aaa;">
+                     <span>Nhạc Nền (BGM):</span>
+                     <input type="checkbox" id="bgm-toggle" onchange="toggleBGM()">
+                 </label>
+                 <label style="font-size:11px; color:#aaa;">Vol: <span id="bgm-vol-display">15%</span></label>
+                 <input type="range" id="bgm-volume" min="0" max="100" value="15" oninput="setBGMVolume(this.value)">
+                 <div id="youtube-player" style="display:none;"></div>
+                 <div id="marching-player-div" style="display:none;"></div>
+                 <div id="combat-player-div" style="display:none;"></div>
+             </div>
         </div>
 
         <div class="control-group">
@@ -324,9 +342,9 @@
         let isGlowingEnabled = false;
         
         // Audio Vars
-        let marchingAudio = new Audio('marching-loop-32908.mp3');
         let marchingTimeout;
-        let player; // YouTube Player
+        let combatTimeout;
+        let player, marchingPlayer, combatPlayer; 
 
         map.on('load', () => {
             map.addSource('vietnam-border', { type: 'geojson', data: 'https://raw.githubusercontent.com/vietnam-geospatial/vietnam-administrative-boundaries/master/vietnam_boundary.geojson' });
@@ -352,18 +370,34 @@
             });
         });
 
-        // --- YOUTUBE BGM ---
+        // --- YOUTUBE API ---
         function onYouTubeIframeAPIReady() {
+            // Background Music
             player = new YT.Player('youtube-player', {
                 height: '0', width: '0',
                 videoId: 'HqKsP3Ed1nk',
                 playerVars: { 'playsinline': 1, 'controls': 0, 'loop': 1, 'playlist': 'HqKsP3Ed1nk' },
                 events: { 'onReady': onPlayerReady }
             });
+
+            // Marching Sound
+            marchingPlayer = new YT.Player('marching-player-div', {
+                height: '0', width: '0',
+                videoId: 'wFMIwdpkoUM',
+                playerVars: { 'playsinline': 1, 'controls': 0 },
+                events: { 'onReady': function(e) { e.target.setVolume(100); } }
+            });
+
+            // Combat Sound
+            combatPlayer = new YT.Player('combat-player-div', {
+                height: '0', width: '0',
+                videoId: 'ukHe5XqGic4',
+                playerVars: { 'playsinline': 1, 'controls': 0 },
+                events: { 'onReady': function(e) { e.target.setVolume(100); } }
+            });
         }
-        function onPlayerReady(event) {
-            event.target.setVolume(15);
-        }
+
+        function onPlayerReady(event) { event.target.setVolume(15); }
         function toggleBGM() {
             if(!player) return;
             const checkbox = document.getElementById('bgm-toggle');
@@ -374,16 +408,50 @@
             if(player) player.setVolume(val);
         }
 
-        // --- MARCHING SOUND ---
+        // --- MARCHING SOUND (5s) ---
         function playMarchingSound() {
             if(!document.getElementById('chk-sound-effect').checked) return;
-            marchingAudio.currentTime = 0;
-            marchingAudio.play().catch(e => console.log("Audio play blocked"));
-            if(marchingTimeout) clearTimeout(marchingTimeout);
-            marchingTimeout = setTimeout(() => {
-                marchingAudio.pause();
-                marchingAudio.currentTime = 0;
-            }, 5000);
+            if(marchingPlayer && typeof marchingPlayer.playVideo === 'function') {
+                marchingPlayer.seekTo(0);
+                marchingPlayer.playVideo();
+                if(marchingTimeout) clearTimeout(marchingTimeout);
+                marchingTimeout = setTimeout(() => {
+                    marchingPlayer.pauseVideo();
+                }, 5000);
+            }
+        }
+        function setMarchingVolume(val) { 
+            if(marchingPlayer && typeof marchingPlayer.setVolume === 'function') {
+                marchingPlayer.setVolume(val * 100); 
+            }
+        }
+
+        // --- COMBAT SOUND (7s) ---
+        function toggleCombatSound() {
+            const chk = document.getElementById('chk-combat-sound');
+            if (chk.checked) playCombatSound();
+            else {
+                if(combatPlayer && typeof combatPlayer.pauseVideo === 'function') combatPlayer.pauseVideo();
+                if(combatTimeout) clearTimeout(combatTimeout);
+            }
+        }
+
+        function playCombatSound() {
+            if(combatPlayer && typeof combatPlayer.playVideo === 'function') {
+                combatPlayer.seekTo(0);
+                combatPlayer.playVideo();
+                if(combatTimeout) clearTimeout(combatTimeout);
+                combatTimeout = setTimeout(() => {
+                    combatPlayer.pauseVideo();
+                    document.getElementById('chk-combat-sound').checked = false;
+                }, 7000); // 7s
+            }
+        }
+
+        function setCombatVolume(val) { 
+            if(combatPlayer && typeof combatPlayer.setVolume === 'function') {
+                combatPlayer.setVolume(val * 100); 
+            }
         }
 
         // --- INTERACTION ---
@@ -643,6 +711,13 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.classList.contains('safe-input')) return; 
+            
+            if (e.key.toLowerCase() === 'r') {
+                const chk = document.getElementById('chk-combat-sound');
+                chk.checked = !chk.checked;
+                toggleCombatSound();
+            }
+
             if ((e.key === 'x' || e.key === 'X')) {
                 if (currentDrawType === 'delete' && pendingDeleteId) {
                      if (suppressDeleteWarning) executeDelete(); else document.getElementById('delete-confirm-modal').style.display = 'flex';
@@ -740,7 +815,6 @@
             const finalRot = (rotation !== undefined) ? rotation : bearing;
             el.querySelector('i').style.transform = `rotate(${finalRot}deg)`;
             
-            // FIX: Arrow Head adheres to Map (rotation & pitch)
             const marker = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat(last).addTo(map);
             markers[id] = marker; 
 
@@ -764,9 +838,13 @@
             el.innerHTML = `<i class="fas fa-${icon}" style="color:${color}; font-size:${px}px; text-shadow: 1px 1px 1px black;"></i>`;
             if(rotation !== undefined) { el.querySelector('i').style.transform = `rotate(${rotation}deg)`; }
 
-            // FIX: Normal Icons adhere to Viewport (Always upright)
-            // Default behavior of Marker is 'auto' ('viewport'), so we just don't set rotationAlignment.
-            const marker = new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
+            const alignment = (icon === 'location-arrow') ? 'map' : 'auto';
+            const marker = new maplibregl.Marker({ 
+                element: el,
+                rotationAlignment: alignment,
+                pitchAlignment: alignment
+            }).setLngLat(lngLat).addTo(map);
+            
             markers[id] = marker; 
 
             const currentZoom = map.getZoom();
@@ -804,8 +882,10 @@
 
         function renderTimelineTable() {
             const tbody = document.getElementById('timeline-list'); tbody.innerHTML = '';
-            // FIX: Allow both Arrows and Markers in Timeline
-            const items = mapData.features.filter(f => f.type === 'arrow' || f.type === 'marker').sort((a,b) => a.order - b.order);
+            const items = mapData.features.filter(f => 
+                f.type === 'arrow' || (f.type === 'marker' && f.data.icon === 'location-arrow')
+            ).sort((a,b) => a.order - b.order);
+            
             items.forEach(feat => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -877,7 +957,6 @@
                 const step = feat.order;
                 const isVisible = (currentTimelineStep === 999) || (step <= currentTimelineStep);
                 
-                // Arrows
                 if (feat.type === 'arrow') {
                     if (map.getLayer(feat.id)) {
                         map.setLayoutProperty(feat.id, 'visibility', isVisible ? 'visible' : 'none');
@@ -896,21 +975,24 @@
                         }
                     }
                 }
-                // Markers (Icons)
                 else if (feat.type === 'marker') {
                     const el = document.getElementById(feat.id);
                     if(el) {
-                        el.style.display = isVisible ? 'flex' : 'none'; // Marker uses flex center
-                        el.classList.remove('feature-dimmed');
-                        if (isVisible && isGlowingEnabled && currentTimelineStep !== 999 && step !== currentTimelineStep && step > 0) {
-                            el.classList.add('feature-dimmed');
+                        if (feat.data.icon === 'location-arrow') {
+                            el.style.display = isVisible ? 'flex' : 'none';
+                            el.classList.remove('feature-dimmed');
+                            if (isVisible && isGlowingEnabled && currentTimelineStep !== 999 && step !== currentTimelineStep && step > 0) {
+                                el.classList.add('feature-dimmed');
+                            }
+                        } else {
+                            el.style.display = 'flex';
+                            el.classList.remove('feature-dimmed');
                         }
                     }
                 }
             });
         }
 
-        // ... (Static Legend & Export functions unchanged) ...
         function createStaticLegend() {
             const container = document.getElementById('static-legend-container');
             const items = [
@@ -949,17 +1031,7 @@
             const layers = map.getStyle().layers; layers.forEach(layer => { if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', labelsVisible ? 'visible' : 'none'); });
         }
         function selectIcon(name) { selectedIcon = name; document.querySelectorAll('.icon-option').forEach(el=>el.classList.remove('selected')); event.currentTarget.classList.add('selected'); }
-        function updateUI() {
-            const mode = document.getElementById('draw-mode').value;
-            if (mode === 'delete') { document.getElementById('options-panel').style.display = 'none'; return; }
-            document.getElementById('options-panel').style.display = mode === 'none' ? 'none' : 'block';
-            // FIX: Ensure icon-options is shown correctly
-            document.getElementById('icon-options').style.display = mode === 'marker' ? 'grid' : 'none'; // Grid instead of block
-            document.getElementById('text-options').style.display = mode === 'text' ? 'block' : 'none';
-            document.getElementById('arrow-specific-options').style.display = mode === 'arrow' ? 'block' : 'none';
-            document.getElementById('polygon-specific-options').style.display = mode === 'polygon' ? 'block' : 'none';
-        }
-        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v21.json"; link.click(); }
+        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v22.json"; link.click(); }
         function importJSON(input) {
             const file = input.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -975,7 +1047,7 @@
                             saveFeature(f.id, 'arrow', f.data, f.style, f.label, f.order);
                         } else if (f.type === 'marker') {
                             addIconMarker({lng: f.data.lng, lat: f.data.lat}, f.data.icon, f.style.color, f.style.size, f.label, f.id, f.style.rotation);
-                            saveFeature(f.id, 'marker', f.data, f.style, f.label, f.order || 0); // Include order
+                            saveFeature(f.id, 'marker', f.data, f.style, f.label, f.order || 0); 
                         } else if (f.type === 'text') {
                             if(f.data && f.data.lng) {
                                 addTextMarker({lng: f.data.lng, lat: f.data.lat}, f.data.text, f.style.color, f.style.size, f.style.font, f.style.isBold, f.style.isItalic, f.id);

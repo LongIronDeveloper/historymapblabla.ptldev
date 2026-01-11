@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v28 (Final Fix Icons & Layering)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v29 (Fix Polygon Load & Timeline Icons)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -44,7 +44,7 @@
         button.btn-action { background: #5d4037; font-weight: bold; border: 1px solid #8d6e63; cursor: pointer; color: #f1c40f; }
         button.btn-action:hover { background: #795548; }
 
-        /* --- ICON GRID FIX (UPDATED BY EXPERT) --- */
+        /* --- ICON GRID --- */
         .icon-grid { 
             display: grid; 
             grid-template-columns: repeat(4, 1fr); 
@@ -59,7 +59,7 @@
             border-radius: 4px; 
             cursor: pointer; 
             height: 40px; 
-            display: flex; /* Flexbox chuẩn */
+            display: flex; 
             align-items: center; 
             justify-content: center;
             transition: all 0.2s;
@@ -67,21 +67,10 @@
         }
         
         .icon-option:hover { background: #6d5e54; transform: scale(1.05); }
-        
-        .icon-option.selected { 
-            background: #f1c40f; 
-            color: #2c3e50; 
-            border-color: #fff; 
-            box-shadow: 0 0 8px #f1c40f; 
-        }
-        
-        /* Style cho icon bên trong */
-        .icon-option i { 
-            font-size: 20px; 
-            pointer-events: none; /* Tránh click nhầm vào i */
-        }
-        
-        /* Màu mặc định cho icon */
+        .icon-option.selected { background: #f1c40f; color: #2c3e50; border-color: #fff; box-shadow: 0 0 8px #f1c40f; }
+        .icon-option.selected i { color: #2c3e50 !important; }
+
+        .icon-option i { font-size: 20px; pointer-events: none; }
         .icon-option i.fa-fire { color: #e67e22; }
         .icon-option i.fa-flag { color: #c0392b; }
         .icon-option i.fa-star { color: #f1c40f; }
@@ -91,9 +80,6 @@
         .icon-option i.fa-mountain { color: #5d4037; }
         .icon-option i.fa-location-arrow { color: #c0392b; }
         .icon-option i.fa-times { color: #c0392b; }
-        
-        /* Khi được chọn, icon chuyển màu tối để tương phản với nền vàng */
-        .icon-option.selected i { color: #2c3e50 !important; }
 
         .help-box { font-size: 12px; color: #bdc3c7; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; line-height: 1.5; border-left: 3px solid #e74c3c; }
         .help-key { display: inline-block; background: #eee; color: #333; padding: 0 4px; border-radius: 2px; font-weight: bold; font-family: monospace; font-size: 10px; }
@@ -107,7 +93,6 @@
             width: 36px; height: 36px; 
             background: #8b4513; color: white; border: 2px solid #d35400; cursor: pointer; border-radius: 4px;
             display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            position: relative; top: auto; right: auto;
         }
         #label-toggle-btn { background: #2c3e50; border-color: #34495e; }
 
@@ -142,8 +127,7 @@
         .l-text { flex: 1; font-size: 11px; line-height: 1.3; font-weight: bold; color: #555; }
         
         .map-feature i { filter: sepia(0.4) drop-shadow(0px 2px 2px rgba(0,0,0,0.8)); }
-        .bend-popup { font-size: 11px; color: #333; }
-
+        
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.6); display: flex; justify-content: center; align-items: center; 
@@ -154,7 +138,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5); font-family: Arial, sans-serif;
             pointer-events: auto;
         }
-        .modal-content h3 { color: #d9534f; margin-top: 0; border-bottom: none; font-size: 18px; text-align: left; }
         .modal-buttons { margin-top: 20px; display: flex; justify-content: flex-end; gap: 10px; }
         .btn-danger { background: #d9534f; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; width: auto; }
         .btn-secondary { background: #ccc; color: black; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; width: auto; }
@@ -179,7 +162,6 @@
             pointer-events: auto; background: transparent;
         }
 
-        /* --- KEY FIX FOR OVERLAYING ICONS --- */
         .drawing-mode .map-feature,
         .drawing-mode .custom-text-marker {
             pointer-events: none !important;
@@ -201,7 +183,7 @@
                 <b>1. DI CHUYỂN:</b> Chọn đối tượng -> Dùng phím <span class="help-key">↑</span> <span class="help-key">↓</span> <span class="help-key">←</span> <span class="help-key">→</span> (2px).<br>
                 <b>2. CHỈNH SỬA:</b> Click chọn để đổi màu/size. Sửa nội dung chữ ở ô bên dưới.<br>
                 <b>3. XOAY:</b> Chọn icon/mũi tên -> Dùng phím <span class="help-key">A</span> (Trái) / <span class="help-key">D</span> (Phải).<br>
-                <b>4. TIMELINE:</b> Dành cho Mũi tên & Icon Chặn đánh.<br>
+                <b>4. TIMELINE:</b> Dành cho Mũi tên & Icon Chặn đánh/Dấu X.<br>
                 <b>5. ÂM THANH:</b> Phím <span class="help-key">R</span>: Chiến đấu (7s).<br>
                 <b>6. XÓA:</b> Chọn chế độ Xóa -> Click đối tượng.
             </div>
@@ -301,7 +283,6 @@
         
         <div class="control-group" style="margin-top:auto; border-top: 2px solid #8b4513;">
              <h3><i class="fas fa-music"></i> Âm thanh</h3>
-             
              <label style="font-size:11px; color:#aaa; display:block; margin-top:5px;">
                 <input type="checkbox" id="chk-sound-effect"> Âm thanh hành quân (5s)
              </label>
@@ -309,7 +290,6 @@
                  <span style="font-size:11px; color:#aaa;">Vol:</span>
                  <input type="range" id="marching-volume" min="0" max="1" step="0.1" value="1" style="width:100px;" oninput="setMarchingVolume(this.value)">
              </div>
-
              <div style="margin-top: 5px; border-top: 1px dashed #555; padding-top: 5px;">
                 <label style="font-size:11px; color:#f1c40f; display:block;">
                    <input type="checkbox" id="chk-combat-sound" onchange="toggleCombatSound()"> Âm thanh chiến đấu (Phím R)
@@ -319,7 +299,6 @@
                     <input type="range" id="combat-volume" min="0" max="1" step="0.1" value="1" style="width:100px;" oninput="setCombatVolume(this.value)">
                 </div>
             </div>
-
              <div style="margin-top: 5px; border-top: 1px dashed #555; padding-top: 5px;">
                  <label style="display:flex; justify-content:space-between; font-size:11px; color:#aaa;">
                      <span>Nhạc Nền (BGM):</span>
@@ -396,26 +375,20 @@
         let isGlowingEnabled = false;
         let zIndexCounter = 100;
 
-        // Audio Vars
         let marchingTimeout;
         let combatTimeout;
         let player, marchingPlayer, combatPlayer; 
 
-        // --- ADDED FUNCTION: UPDATE UI ---
         function updateUI() {
             const mode = document.getElementById('draw-mode').value;
             const btn = document.getElementById('action-btn');
 
-            // 1. Ẩn tất cả trước
             document.getElementById('icon-options').style.display = 'none';
             document.getElementById('text-options').style.display = 'none';
             document.getElementById('arrow-specific-options').style.display = 'none';
             document.getElementById('polygon-specific-options').style.display = 'none';
-            
-            // Reset edit container
             document.getElementById('edit-text-container').style.display = 'none';
 
-            // 2. Hiện bảng tương ứng
             if (mode === 'marker') {
                 document.getElementById('icon-options').style.display = 'block';
             } else if (mode === 'text') {
@@ -426,7 +399,6 @@
                 document.getElementById('polygon-specific-options').style.display = 'block';
             }
             
-            // 3. Cập nhật nút vẽ
             if (mode === 'delete') {
                 btn.innerText = "CHẾ ĐỘ XÓA (Bấm vào đối tượng)";
                 btn.style.background = "#e74c3c";
@@ -461,7 +433,6 @@
                 document.getElementById('delete-confirm-modal').style.display = 'none';
             });
 
-            // Initialize UI state
             updateUI();
         });
 
@@ -541,8 +512,6 @@
                 if (currentDrawType === 'polygon') map.dragPan.disable();
                 btn.style.background = "#c0392b"; btn.style.color = "white";
                 selectFeature(null);
-                
-                // ADD CLASS TO MAP CONTAINER TO DISABLE POINTER EVENTS ON ICONS
                 mapContainer.classList.add('drawing-mode');
             } else {
                 stopDrawing();
@@ -556,7 +525,6 @@
             map.getCanvas().style.cursor = '';
             map.dragPan.enable();
             
-            // REMOVE CLASS FROM MAP CONTAINER
             document.getElementById('map').classList.remove('drawing-mode');
             
             if(map.getLayer(tempId)) map.removeLayer(tempId);
@@ -773,6 +741,7 @@
                 if (isFill) {
                      finalGeoCoords.push(finalGeoCoords[0]);
                      coords = [finalGeoCoords];
+                     // Note: We pass the ring (finalGeoCoords), not the polygon wrapper (coords) to addPolygonToMap
                      addPolygonToMap(finalGeoCoords, color, 0.5, id, isDashed);
                 } else {
                      coords = finalGeoCoords;
@@ -895,13 +864,14 @@
 
             el.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (isDrawing) return; // FIX: Block select when drawing
+                if (isDrawing) return; 
                 if (currentDrawType === 'delete') { trySelectForDelete(id, el); } else { selectFeature(id); }
             });
             return marker;
         }
 
         function addPolygonToMap(coords, color, opacity, id, isDashed) {
+            // FIX: Ensure wrapping in array for Polygon type
             map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } } });
             map.moveLayer(id + '-fill', 'vn-border-line'); 
             map.addLayer({ id: id + '-fill', type: 'fill', source: id, paint: { 'fill-color': color, 'fill-opacity': opacity } }, 'layer-separator');
@@ -923,7 +893,6 @@
             
             markers[id] = marker; 
 
-            // FIX: Z-Index Layering
             el.style.zIndex = zIndexCounter++;
 
             const currentZoom = map.getZoom();
@@ -932,7 +901,7 @@
             
             el.addEventListener('click', (e) => { 
                 e.stopPropagation(); 
-                if (isDrawing) return; // FIX: Block select when drawing
+                if (isDrawing) return; 
                 if (currentDrawType === 'delete') { trySelectForDelete(id, el); } else { selectFeature(id); }
             });
             return marker;
@@ -944,7 +913,6 @@
             const marker = new maplibregl.Marker({ element: el }).setLngLat(lngLat).addTo(map);
             markers[id] = marker; 
             
-            // FIX: Z-Index Layering
             el.style.zIndex = zIndexCounter++;
 
             const currentZoom = map.getZoom();
@@ -952,7 +920,7 @@
             el.style.transform = `translate(-50%, -50%) scale(${scaleFactor})`;
             el.addEventListener('click', (e) => { 
                 e.stopPropagation(); 
-                if (isDrawing) return; // FIX: Block select when drawing
+                if (isDrawing) return; 
                 if (currentDrawType === 'delete') { trySelectForDelete(id, el); } else { selectFeature(id); }
             });
             return marker;
@@ -965,10 +933,14 @@
             renderTimelineTable();
         }
 
+        // --- UPDATED: Timeline Logic to include 'times' and 'location-arrow'
         function renderTimelineTable() {
             const tbody = document.getElementById('timeline-list'); tbody.innerHTML = '';
+            // FIX: Allow both 'location-arrow' and 'times' to be in timeline
+            const allowedIcons = ['location-arrow', 'times'];
+            
             const items = mapData.features.filter(f => 
-                f.type === 'arrow' || (f.type === 'marker' && f.data.icon === 'location-arrow')
+                f.type === 'arrow' || (f.type === 'marker' && allowedIcons.includes(f.data.icon))
             ).sort((a,b) => a.order - b.order);
             
             items.forEach(feat => {
@@ -1038,10 +1010,14 @@
         function toggleGlowMode() { isGlowingEnabled = document.getElementById('chk-glow-effect').checked; updateVisibility(); }
         
         function updateVisibility() {
+            // FIX: Added logic to handle Marker visibility in Timeline
+            const timelineIcons = ['location-arrow', 'times'];
+
             mapData.features.forEach(feat => {
                 const step = feat.order;
                 const isVisible = (currentTimelineStep === 999) || (step <= currentTimelineStep);
                 
+                // 1. Handle Arrows
                 if (feat.type === 'arrow') {
                     if (map.getLayer(feat.id)) {
                         map.setLayoutProperty(feat.id, 'visibility', isVisible ? 'visible' : 'none');
@@ -1059,6 +1035,20 @@
                             head.classList.add('feature-dimmed');
                         }
                     }
+                } 
+                // 2. Handle Timeline Markers (Location Arrow & Times)
+                else if (feat.type === 'marker' && timelineIcons.includes(feat.data.icon)) {
+                    if (markers[feat.id]) {
+                        const el = markers[feat.id].getElement();
+                        if (el) {
+                            el.style.display = isVisible ? 'flex' : 'none';
+                            // Apply Glow Effect
+                            el.classList.remove('feature-dimmed');
+                            if (isVisible && isGlowingEnabled && currentTimelineStep !== 999 && step !== currentTimelineStep) {
+                                el.classList.add('feature-dimmed');
+                            }
+                        }
+                    }
                 }
             });
         }
@@ -1071,7 +1061,7 @@
                 { icon: '<i class="fas fa-mountain" style="color:#5d4037"></i> <i class="fas fa-long-arrow-alt-right" style="color:#c0392b; border-bottom: 2px dashed #c0392b"></i>', text: 'Nghĩa quân rút lên núi', type: 'arrow', color: '#c0392b', dashed: true },
                 { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#c0392b; transform: rotate(-45deg);"></i>', text: 'Hướng tiến của nghĩa quân', type: 'arrow', color: '#c0392b', dashed: false },
                 { icon: '<i class="fas fa-location-arrow" style="color:#c0392b"></i>', text: 'Nghĩa quân chặn đánh', type: 'marker', color: '#c0392b', iconName: 'location-arrow' },
-                { icon: '<i class="fas fa-times" style="color:#c0392b"></i>', text: 'Nơi tiêu diệt địch', type: 'marker', color: '#c0392b', iconName: 'times' },
+                { icon: '<i class="fas fa-times" style="color:#c0392b"></i>', text: 'Nơi chặn đánh viện quân địch', type: 'marker', color: '#c0392b', iconName: 'times' },
                 { icon: '<i class="fas fa-star" style="color:#f1c40f"></i>', text: 'Nơi đánh bại quân Minh', type: 'marker', color: '#f1c40f', iconName: 'star' },
                 { icon: '<i class="fas fa-chess-rook" style="color:#7f8c8d"></i>', text: 'Thành quân Minh bị vây', type: 'marker', color: '#7f8c8d', iconName: 'chess-rook' },
                 { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#2980b9; border-bottom:2px dashed #2980b9;"></i>', text: 'Quân Minh rút chạy', type: 'arrow', color: '#2980b9', dashed: true },
@@ -1103,6 +1093,7 @@
         }
         function selectIcon(name) { selectedIcon = name; document.querySelectorAll('.icon-option').forEach(el=>el.classList.remove('selected')); event.currentTarget.classList.add('selected'); }
         function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v26.json"; link.click(); }
+        
         function importJSON(input) {
             const file = input.files[0]; if (!file) return;
             const reader = new FileReader();
@@ -1127,7 +1118,10 @@
                         } else if (f.type === 'polygon') {
                             if (f.style.isFill) {
                                 let inputCoords = f.data;
-                                if(Array.isArray(f.data) && Array.isArray(f.data[0]) && Array.isArray(f.data[0][0])) inputCoords = f.data[0];
+                                // FIX: Detect if data is Polygon (3D array) or Ring (2D array)
+                                if(Array.isArray(f.data) && Array.isArray(f.data[0]) && Array.isArray(f.data[0][0])) {
+                                    inputCoords = f.data[0]; // Extract the ring
+                                }
                                 addPolygonToMap(inputCoords, f.style.color, f.style.opacity, f.id, f.style.isDashed);
                             } else {
                                 map.addSource(f.id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'LineString', coordinates: f.data } } });

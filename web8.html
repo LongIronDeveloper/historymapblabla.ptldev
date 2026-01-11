@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bản Đồ Chiến Thuật - Tactical Editor v29 (Fix Polygon Load & Timeline Icons)</title>
+    <title>Bản Đồ Chiến Thuật - Tactical Editor v36 (Full Legend Manager)</title>
     
     <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -104,7 +104,7 @@
 
         #floating-legend {
             position: absolute; bottom: 20px; right: 20px;
-            width: 350px; max-height: 60vh;
+            width: 380px; max-height: 70vh;
             background: rgba(255, 255, 255, 0.98);
             border: 2px solid #8b4513; border-radius: 5px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.4); z-index: 2000;
@@ -112,20 +112,46 @@
             color: #333; font-family: 'Merriweather', serif;
             transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
             transform-origin: bottom right;
+            display: flex; flex-direction: column;
         }
         #floating-legend.minimized { transform: translateY(calc(100% - 36px)); }
         
         .legend-header {
             background: #8b4513; color: #f1c40f; padding: 10px; font-weight: bold;
             display: flex; justify-content: space-between; align-items: center; cursor: pointer;
-            font-size: 13px; text-transform: uppercase; user-select: none;
+            font-size: 13px; text-transform: uppercase; user-select: none; flex-shrink: 0;
         }
-        .legend-body { padding: 5px; overflow-y: auto; max-height: calc(60vh - 40px); }
-        .legend-row { display: flex; align-items: center; gap: 10px; padding: 6px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
+        .add-legend-btn {
+            margin-left: 10px; color: #ddd; cursor: pointer; transition: color 0.2s;
+        }
+        .add-legend-btn:hover { color: #fff; text-shadow: 0 0 5px #f1c40f; }
+
+        /* Panel chỉnh sửa legend */
+        #legend-editor-panel {
+            background: #fdf5e6; padding: 10px; border-bottom: 2px solid #ddd;
+            display: none; font-family: 'Roboto', sans-serif; flex-shrink: 0;
+        }
+        #legend-editor-panel select, #legend-editor-panel input {
+            background: #fff; color: #333; border: 1px solid #ccc; margin-bottom: 5px;
+        }
+
+        .legend-body { padding: 5px; overflow-y: auto; flex-grow: 1; }
+        
+        .legend-row { 
+            display: flex; align-items: center; gap: 8px; padding: 6px; 
+            border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; 
+            user-select: none;
+        }
         .legend-row:hover { background: #f0e6d2; }
+        .legend-row.dragging { opacity: 0.5; background: #e0d5b0; border: 2px dashed #8b4513; }
+        
         .l-icon { width: 30px; text-align: center; display: flex; justify-content: center; align-items: center; }
         .l-text { flex: 1; font-size: 11px; line-height: 1.3; font-weight: bold; color: #555; }
-        
+        .l-actions { display: flex; gap: 5px; opacity: 0.6; }
+        .legend-row:hover .l-actions { opacity: 1; }
+        .l-btn { cursor: pointer; font-size: 12px; padding: 2px; }
+        .l-btn:hover { color: #000; transform: scale(1.2); }
+
         .map-feature i { filter: sepia(0.4) drop-shadow(0px 2px 2px rgba(0,0,0,0.8)); }
         
         .modal-overlay {
@@ -283,6 +309,7 @@
         
         <div class="control-group" style="margin-top:auto; border-top: 2px solid #8b4513;">
              <h3><i class="fas fa-music"></i> Âm thanh</h3>
+             
              <label style="font-size:11px; color:#aaa; display:block; margin-top:5px;">
                 <input type="checkbox" id="chk-sound-effect"> Âm thanh hành quân (5s)
              </label>
@@ -290,6 +317,7 @@
                  <span style="font-size:11px; color:#aaa;">Vol:</span>
                  <input type="range" id="marching-volume" min="0" max="1" step="0.1" value="1" style="width:100px;" oninput="setMarchingVolume(this.value)">
              </div>
+
              <div style="margin-top: 5px; border-top: 1px dashed #555; padding-top: 5px;">
                 <label style="font-size:11px; color:#f1c40f; display:block;">
                    <input type="checkbox" id="chk-combat-sound" onchange="toggleCombatSound()"> Âm thanh chiến đấu (Phím R)
@@ -299,6 +327,7 @@
                     <input type="range" id="combat-volume" min="0" max="1" step="0.1" value="1" style="width:100px;" oninput="setCombatVolume(this.value)">
                 </div>
             </div>
+
              <div style="margin-top: 5px; border-top: 1px dashed #555; padding-top: 5px;">
                  <label style="display:flex; justify-content:space-between; font-size:11px; color:#aaa;">
                      <span>Nhạc Nền (BGM):</span>
@@ -306,9 +335,10 @@
                  </label>
                  <label style="font-size:11px; color:#aaa;">Vol: <span id="bgm-vol-display">15%</span></label>
                  <input type="range" id="bgm-volume" min="0" max="100" value="15" oninput="setBGMVolume(this.value)">
-                 <div id="youtube-player" style="display:none;"></div>
-                 <div id="marching-player-div" style="display:none;"></div>
-                 <div id="combat-player-div" style="display:none;"></div>
+                 
+                 <div id="youtube-player" style="position: fixed; bottom: 0; right: 0; width: 1px; height: 1px; opacity: 0.001; pointer-events: none; z-index: -999;"></div>
+                 <div id="marching-player-div" style="position: fixed; bottom: 0; right: 0; width: 1px; height: 1px; opacity: 0.001; pointer-events: none; z-index: -999;"></div>
+                 <div id="combat-player-div" style="position: fixed; bottom: 0; right: 0; width: 1px; height: 1px; opacity: 0.001; pointer-events: none; z-index: -999;"></div>
              </div>
         </div>
 
@@ -320,10 +350,44 @@
     </div>
 
     <div id="floating-legend">
-        <div class="legend-header" onclick="toggleLegend()">
-            <span><i class="fas fa-map"></i> Chú Giải Quân Sự</span>
-            <i class="fas fa-chevron-down" id="legend-icon"></i>
+        <div class="legend-header">
+            <span>
+                <i class="fas fa-map"></i> Chú Giải Quân Sự
+                <i class="fas fa-pencil-alt add-legend-btn" title="Thêm/Sửa chú giải" onclick="toggleLegendEditor(event)"></i>
+            </span>
+            <i class="fas fa-chevron-down" id="legend-icon" onclick="toggleLegend()"></i>
         </div>
+        
+        <div id="legend-editor-panel">
+            <div id="legend-editor-title" style="font-size:11px; margin-bottom:5px; font-weight:bold; color:#333;">Thêm chú giải mới:</div>
+            <div style="display:flex; gap:5px; margin-bottom:5px;">
+                <select id="cust-leg-icon" style="width: 60%; height: 30px;">
+                    <optgroup label="Biểu tượng (Marker)">
+                        <option value="flag">🚩 Cờ (Sở chỉ huy)</option>
+                        <option value="fire">🔥 Lửa (Khởi nghĩa)</option>
+                        <option value="star">⭐ Sao (Chiến thắng)</option>
+                        <option value="chess-rook">♜ Thành trì</option>
+                        <option value="skull">💀 Tiêu diệt</option>
+                        <option value="campground">⛺ Doanh trại</option>
+                        <option value="mountain">⛰️ Núi</option>
+                        <option value="location-arrow">🏹 Chặn đánh</option>
+                        <option value="times">❌ Dấu X</option>
+                    </optgroup>
+                    <optgroup label="Mũi tên & Vùng">
+                        <option value="arrow-solid">⬆️ Mũi tiến công (Liền)</option>
+                        <option value="arrow-dashed">⬆️ Mũi rút lui (Đứt)</option>
+                        <option value="square">🟦 Vùng hoạt động</option>
+                    </optgroup>
+                </select>
+                <input type="color" id="cust-leg-color" value="#c0392b" style="width:30%; height: 30px; padding:0;">
+            </div>
+            <input type="text" id="cust-leg-text" placeholder="Mô tả..." style="width:100%; box-sizing:border-box; padding:5px; border:1px solid #ccc;">
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <button id="btn-save-legend" onclick="saveLegendItem()" style="flex:1; background:#27ae60; color:white; border:none; padding:5px; cursor:pointer;">Thêm</button>
+                <button onclick="cancelLegendEdit()" style="width:30%; background:#7f8c8d; color:white; border:none; padding:5px; cursor:pointer;">Hủy</button>
+            </div>
+        </div>
+
         <div class="legend-body" id="static-legend-container"></div>
     </div>
 
@@ -342,8 +406,6 @@
             </div>
         </div>
     </div>
-
-    <script src="https://www.youtube.com/iframe_api"></script>
 
     <script>
         // --- 1. CONFIG & INIT ---
@@ -375,9 +437,30 @@
         let isGlowingEnabled = false;
         let zIndexCounter = 100;
 
+        // Audio Vars
         let marchingTimeout;
         let combatTimeout;
         let player, marchingPlayer, combatPlayer; 
+
+        // --- LEGEND DATA MANAGEMENT ---
+        // SỬA: Danh sách đầy đủ 13 mục mặc định
+        let legendData = [
+            { id: 1, iconCode: 'fire', color: '#e67e22', text: 'Nơi Lê Lợi dựng cờ', type: 'marker' },
+            { id: 2, iconCode: 'flag', color: '#c0392b', text: 'Sở chỉ huy nghĩa quân', type: 'marker' },
+            { id: 3, iconCode: 'mountain', color: '#5d4037', text: 'Nghĩa quân rút lên núi', type: 'arrow', dashed: true },
+            { id: 4, iconCode: 'arrow-up', color: '#c0392b', text: 'Hướng tiến của nghĩa quân', type: 'arrow', dashed: false },
+            { id: 5, iconCode: 'location-arrow', color: '#c0392b', text: 'Nghĩa quân chặn đánh', type: 'marker' },
+            { id: 6, iconCode: 'times', color: '#c0392b', text: 'Nơi tiêu diệt địch', type: 'marker' },
+            { id: 7, iconCode: 'star', color: '#f1c40f', text: 'Nơi đánh bại quân Minh', type: 'marker' },
+            { id: 8, iconCode: 'chess-rook', color: '#7f8c8d', text: 'Thành quân Minh bị vây', type: 'marker' },
+            { id: 9, iconCode: 'arrow-down', color: '#2980b9', text: 'Quân Minh rút chạy', type: 'arrow', dashed: true },
+            { id: 10, iconCode: 'square', color: '#eab676', text: 'Vùng hoạt động 1418-1423', type: 'polygon' },
+            { id: 11, iconCode: 'square', color: '#a2d9a2', text: 'Vùng giải phóng 1424-1425', type: 'polygon' },
+            { id: 12, iconCode: 'square', color: '#c3e6cb', text: 'Vùng giải phóng 1426-1427', type: 'polygon' },
+            { id: 13, iconCode: 'border', color: '#000000', text: 'Biên giới quốc gia', type: 'none' }
+        ];
+        let editingLegendIndex = -1;
+        let draggedLegendIndex = null;
 
         function updateUI() {
             const mode = document.getElementById('draw-mode').value;
@@ -416,7 +499,7 @@
             map.addLayer({ id: 'vn-border-line', type: 'line', source: 'vietnam-border', paint: { 'line-color': '#8b4513', 'line-width': 2 } });
             map.addLayer({ id: 'layer-separator', type: 'background', layout: { 'visibility': 'visible' }, paint: { 'background-color': 'rgba(0,0,0,0)' } });
             
-            createStaticLegend();
+            renderLegend();
             
             document.getElementById('toggle-btn').addEventListener('click', function() { document.getElementById('sidebar').classList.toggle('collapsed'); });
             document.getElementById('label-toggle-btn').addEventListener('click', function() { toggleMapLabels(); });
@@ -741,7 +824,6 @@
                 if (isFill) {
                      finalGeoCoords.push(finalGeoCoords[0]);
                      coords = [finalGeoCoords];
-                     // Note: We pass the ring (finalGeoCoords), not the polygon wrapper (coords) to addPolygonToMap
                      addPolygonToMap(finalGeoCoords, color, 0.5, id, isDashed);
                 } else {
                      coords = finalGeoCoords;
@@ -871,7 +953,6 @@
         }
 
         function addPolygonToMap(coords, color, opacity, id, isDashed) {
-            // FIX: Ensure wrapping in array for Polygon type
             map.addSource(id, { type: 'geojson', data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] } } });
             map.moveLayer(id + '-fill', 'vn-border-line'); 
             map.addLayer({ id: id + '-fill', type: 'fill', source: id, paint: { 'fill-color': color, 'fill-opacity': opacity } }, 'layer-separator');
@@ -933,10 +1014,8 @@
             renderTimelineTable();
         }
 
-        // --- UPDATED: Timeline Logic to include 'times' and 'location-arrow'
         function renderTimelineTable() {
             const tbody = document.getElementById('timeline-list'); tbody.innerHTML = '';
-            // FIX: Allow both 'location-arrow' and 'times' to be in timeline
             const allowedIcons = ['location-arrow', 'times'];
             
             const items = mapData.features.filter(f => 
@@ -1010,14 +1089,12 @@
         function toggleGlowMode() { isGlowingEnabled = document.getElementById('chk-glow-effect').checked; updateVisibility(); }
         
         function updateVisibility() {
-            // FIX: Added logic to handle Marker visibility in Timeline
             const timelineIcons = ['location-arrow', 'times'];
 
             mapData.features.forEach(feat => {
                 const step = feat.order;
                 const isVisible = (currentTimelineStep === 999) || (step <= currentTimelineStep);
                 
-                // 1. Handle Arrows
                 if (feat.type === 'arrow') {
                     if (map.getLayer(feat.id)) {
                         map.setLayoutProperty(feat.id, 'visibility', isVisible ? 'visible' : 'none');
@@ -1036,13 +1113,11 @@
                         }
                     }
                 } 
-                // 2. Handle Timeline Markers (Location Arrow & Times)
                 else if (feat.type === 'marker' && timelineIcons.includes(feat.data.icon)) {
                     if (markers[feat.id]) {
                         const el = markers[feat.id].getElement();
                         if (el) {
                             el.style.display = isVisible ? 'flex' : 'none';
-                            // Apply Glow Effect
                             el.classList.remove('feature-dimmed');
                             if (isVisible && isGlowingEnabled && currentTimelineStep !== 999 && step !== currentTimelineStep) {
                                 el.classList.add('feature-dimmed');
@@ -1053,38 +1128,168 @@
             });
         }
 
-        function createStaticLegend() {
+        // --- NEW LEGEND FUNCTIONS ---
+        function toggleLegendEditor(e) {
+            e.stopPropagation();
+            const panel = document.getElementById('legend-editor-panel');
+            // Reset to Add mode
+            editingLegendIndex = -1;
+            document.getElementById('legend-editor-title').innerText = "Thêm chú giải mới:";
+            document.getElementById('btn-save-legend').innerText = "Thêm";
+            document.getElementById('cust-leg-text').value = '';
+            
+            panel.style.display = (panel.style.display === 'none' || panel.style.display === '') ? 'block' : 'none';
+        }
+
+        function cancelLegendEdit() {
+            document.getElementById('legend-editor-panel').style.display = 'none';
+        }
+
+        function editLegend(index) {
+            const item = legendData[index];
+            editingLegendIndex = index;
+            
+            // Populate form
+            let editorIconVal = item.iconCode;
+            if(item.type === 'arrow') {
+                editorIconVal = item.dashed ? 'arrow-dashed' : 'arrow-solid';
+            } else if (item.type === 'polygon') {
+                editorIconVal = 'square';
+            }
+
+            document.getElementById('cust-leg-icon').value = editorIconVal; 
+            document.getElementById('cust-leg-color').value = item.color;
+            document.getElementById('cust-leg-text').value = item.text;
+            
+            // UI Change
+            document.getElementById('legend-editor-title').innerText = "Sửa chú giải:";
+            document.getElementById('btn-save-legend').innerText = "Lưu lại";
+            document.getElementById('legend-editor-panel').style.display = 'block';
+        }
+
+        function deleteLegend(index) {
+            if(confirm("Bạn có chắc muốn xóa chú giải này không?")) {
+                legendData.splice(index, 1);
+                renderLegend();
+            }
+        }
+
+        function saveLegendItem() {
+            const iconVal = document.getElementById('cust-leg-icon').value;
+            const color = document.getElementById('cust-leg-color').value;
+            const text = document.getElementById('cust-leg-text').value || "Chú giải mới";
+            
+            let type = 'marker';
+            let dashed = false;
+            let iconCode = iconVal;
+
+            // Mapping selection to data type
+            if (iconVal === 'arrow-solid') { 
+                type = 'arrow'; 
+                dashed = false;
+                iconCode = 'long-arrow-alt-up'; // Visual fallback
+            } else if (iconVal === 'arrow-dashed') { 
+                type = 'arrow'; 
+                dashed = true;
+                iconCode = 'long-arrow-alt-up';
+            } else if (iconVal === 'square') { 
+                type = 'polygon'; 
+            }
+            
+            const newItem = {
+                id: Date.now(),
+                iconCode: iconCode,
+                color: color,
+                text: text,
+                type: type,
+                dashed: dashed
+            };
+
+            if (editingLegendIndex > -1) {
+                // Edit existing
+                legendData[editingLegendIndex] = newItem;
+            } else {
+                // Add new
+                legendData.push(newItem);
+            }
+            
+            renderLegend();
+            cancelLegendEdit();
+        }
+
+        function renderLegend() {
             const container = document.getElementById('static-legend-container');
-            const items = [
-                { icon: '<i class="fas fa-fire" style="color:#e67e22"></i>', text: 'Nơi Lê Lợi dựng cờ', type: 'marker', color: '#e67e22', iconName: 'fire' },
-                { icon: '<i class="fas fa-flag" style="color:#c0392b"></i>', text: 'Sở chỉ huy nghĩa quân', type: 'marker', color: '#c0392b', iconName: 'flag' },
-                { icon: '<i class="fas fa-mountain" style="color:#5d4037"></i> <i class="fas fa-long-arrow-alt-right" style="color:#c0392b; border-bottom: 2px dashed #c0392b"></i>', text: 'Nghĩa quân rút lên núi', type: 'arrow', color: '#c0392b', dashed: true },
-                { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#c0392b; transform: rotate(-45deg);"></i>', text: 'Hướng tiến của nghĩa quân', type: 'arrow', color: '#c0392b', dashed: false },
-                { icon: '<i class="fas fa-location-arrow" style="color:#c0392b"></i>', text: 'Nghĩa quân chặn đánh', type: 'marker', color: '#c0392b', iconName: 'location-arrow' },
-                { icon: '<i class="fas fa-times" style="color:#c0392b"></i>', text: 'Nơi chặn đánh viện quân địch', type: 'marker', color: '#c0392b', iconName: 'times' },
-                { icon: '<i class="fas fa-star" style="color:#f1c40f"></i>', text: 'Nơi đánh bại quân Minh', type: 'marker', color: '#f1c40f', iconName: 'star' },
-                { icon: '<i class="fas fa-chess-rook" style="color:#7f8c8d"></i>', text: 'Thành quân Minh bị vây', type: 'marker', color: '#7f8c8d', iconName: 'chess-rook' },
-                { icon: '<i class="fas fa-long-arrow-alt-right" style="color:#2980b9; border-bottom:2px dashed #2980b9;"></i>', text: 'Quân Minh rút chạy', type: 'arrow', color: '#2980b9', dashed: true },
-                { icon: '<div style="width:14px;height:14px;background:#eab676;opacity:0.8;border:1px solid #d35400"></div>', text: 'Vùng hoạt động 1418-1423', type: 'polygon', color: '#eab676', dashed: false },
-                { icon: '<div style="width:14px;height:14px;background:#a2d9a2;opacity:0.8;border:1px solid #27ae60"></div>', text: 'Vùng giải phóng 1424-1425', type: 'polygon', color: '#a2d9a2', dashed: false },
-                { icon: '<div style="width:14px;height:14px;background:#c3e6cb;opacity:0.8;border:1px solid #2ecc71"></div>', text: 'Vùng giải phóng 1426-1427', type: 'polygon', color: '#c3e6cb', dashed: false },
-                { icon: '<div style="width:20px;height:0px;border-top:2px dashed #000;"></div>', text: 'Biên giới quốc gia', type: 'none', color: '#000' }
-            ];
-            items.forEach(item => {
-                const div = document.createElement('div'); div.className = 'legend-row';
-                div.innerHTML = `<div class="l-icon">${item.icon}</div><div class="l-text">${item.text}</div>`;
+            container.innerHTML = '';
+            
+            legendData.forEach((item, index) => {
+                const div = document.createElement('div'); 
+                div.className = 'legend-row';
+                div.draggable = true;
+                
+                // Icon rendering logic
+                let iconHtml = '';
+                if(item.type === 'arrow') {
+                    const rot = item.dashed ? 0 : -45;
+                    const border = item.dashed ? `border-bottom: 2px dashed ${item.color}` : '';
+                    iconHtml = `<i class="fas fa-long-arrow-alt-right" style="color:${item.color}; transform: rotate(${rot}deg); ${border}"></i>`;
+                } else if (item.type === 'polygon') {
+                    iconHtml = `<div style="width:14px;height:14px;background:${item.color};opacity:0.8;border:1px solid #333"></div>`;
+                } else if (item.type === 'none') {
+                    iconHtml = `<div style="width:20px;height:0px;border-top:2px dashed ${item.color};"></div>`;
+                } else {
+                    iconHtml = `<i class="fas fa-${item.iconCode}" style="color:${item.color}; font-size:18px;"></i>`;
+                }
+
+                div.innerHTML = `
+                    <div class="l-icon">${iconHtml}</div>
+                    <div class="l-text">${item.text}</div>
+                    <div class="l-actions">
+                        <i class="fas fa-pencil-alt l-btn" title="Sửa" onclick="editLegend(${index}); event.stopPropagation();"></i>
+                        <i class="fas fa-trash l-btn" title="Xóa" style="color:#e74c3c" onclick="deleteLegend(${index}); event.stopPropagation();"></i>
+                    </div>
+                `;
+                
+                div.title = "Click để vẽ, Kéo để đổi thứ tự";
+                
+                // Click to Draw
                 if(item.type !== 'none') {
-                    div.title = "Click để chọn vẽ loại này";
                     div.onclick = () => {
-                        document.getElementById('draw-mode').value = item.type; document.getElementById('draw-color').value = item.color;
+                        document.getElementById('draw-mode').value = item.type; 
+                        document.getElementById('draw-color').value = item.color;
                         if(item.type === 'arrow') document.getElementById('draw-dashed').checked = item.dashed;
-                        if(item.type === 'marker') selectIcon(item.iconName);
-                        updateUI(); if(!isDrawing) toggleDrawing();
+                        if(item.type === 'marker') selectIcon(item.iconCode);
+                        updateUI(); 
+                        if(!isDrawing) toggleDrawing();
                     };
                 }
+
+                // Drag Events
+                div.addEventListener('dragstart', (e) => {
+                    draggedLegendIndex = index;
+                    div.classList.add('dragging');
+                });
+                div.addEventListener('dragend', () => {
+                    div.classList.remove('dragging');
+                    draggedLegendIndex = null;
+                });
+                div.addEventListener('dragover', (e) => {
+                    e.preventDefault(); // Allow dropping
+                });
+                div.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (draggedLegendIndex !== null && draggedLegendIndex !== index) {
+                        // Swap items
+                        const movedItem = legendData[draggedLegendIndex];
+                        legendData.splice(draggedLegendIndex, 1);
+                        legendData.splice(index, 0, movedItem);
+                        renderLegend();
+                    }
+                });
+
                 container.appendChild(div);
             });
         }
+
         function toggleLegend() { const leg = document.getElementById('floating-legend'); const icon = document.getElementById('legend-icon'); leg.classList.toggle('minimized'); icon.className = leg.classList.contains('minimized') ? "fas fa-chevron-up" : "fas fa-chevron-down"; }
         function toggleMapLabels() {
             let labelsVisible = document.getElementById('label-toggle-btn').style.color !== 'rgb(170, 170, 170)'; labelsVisible = !labelsVisible;
@@ -1092,7 +1297,19 @@
             const layers = map.getStyle().layers; layers.forEach(layer => { if (layer.type === 'symbol') map.setLayoutProperty(layer.id, 'visibility', labelsVisible ? 'visible' : 'none'); });
         }
         function selectIcon(name) { selectedIcon = name; document.querySelectorAll('.icon-option').forEach(el=>el.classList.remove('selected')); event.currentTarget.classList.add('selected'); }
-        function exportJSON() { const blob = new Blob([JSON.stringify(mapData)], {type: "application/json"}); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = "tactical_map_v26.json"; link.click(); }
+        
+        // SỬA: Lưu thêm legendData vào file JSON
+        function exportJSON() { 
+            const exportData = {
+                features: mapData.features,
+                legends: legendData // Save Legends
+            };
+            const blob = new Blob([JSON.stringify(exportData)], {type: "application/json"}); 
+            const link = document.createElement('a'); 
+            link.href = URL.createObjectURL(blob); 
+            link.download = "tactical_map_v35.json"; 
+            link.click(); 
+        }
         
         function importJSON(input) {
             const file = input.files[0]; if (!file) return;
@@ -1100,9 +1317,20 @@
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
+                    
+                    // Xử lý nạp Features (giữ nguyên logic cũ)
+                    let featuresList = data.features || []; // Tương thích ngược nếu file cũ chỉ là array
+                    if(Array.isArray(data)) featuresList = data; // File cũ format V1
+
+                    // Xử lý nạp Legends (nếu có)
+                    if(data.legends && Array.isArray(data.legends)) {
+                        legendData = data.legends;
+                        renderLegend();
+                    }
+
                     mapData.features.forEach(f => deleteFeature(f.id));
                     mapData = { features: [] }; arrowCounter = 0; markers = {}; 
-                    data.features.forEach(f => {
+                    featuresList.forEach(f => {
                         if (f.order > arrowCounter) arrowCounter = f.order;
                         if (f.type === 'arrow') {
                             addArrowToMap(f.data, f.style.color, f.style.size, f.style.width || 4, f.style.dashed, f.id, f.order, f.style.rotation);
@@ -1118,9 +1346,8 @@
                         } else if (f.type === 'polygon') {
                             if (f.style.isFill) {
                                 let inputCoords = f.data;
-                                // FIX: Detect if data is Polygon (3D array) or Ring (2D array)
                                 if(Array.isArray(f.data) && Array.isArray(f.data[0]) && Array.isArray(f.data[0][0])) {
-                                    inputCoords = f.data[0]; // Extract the ring
+                                    inputCoords = f.data[0]; 
                                 }
                                 addPolygonToMap(inputCoords, f.style.color, f.style.opacity, f.id, f.style.isDashed);
                             } else {
@@ -1130,11 +1357,20 @@
                             saveFeature(f.id, 'polygon', f.data, f.style, f.label, 0);
                         }
                     });
-                    setTimeout(updateMarkerScales, 100); alert("Đã tải bản đồ thành công!");
+                    
+                    setTimeout(updateMarkerScales, 100); 
+                    
+                    new maplibregl.Popup({closeButton:false, closeOnClick:true, offset: 25})
+                        .setLngLat(map.getCenter())
+                        .setHTML('<div style="color:#27ae60; font-weight:bold; font-family:sans-serif;">✅ Đã tải bản đồ thành công!</div>')
+                        .addTo(map);
+
                 } catch (err) { console.error(err); alert("Lỗi file không đúng định dạng."); }
             };
             reader.readAsText(file); input.value = '';
         }
     </script>
+    
+    <script src="https://www.youtube.com/iframe_api"></script>
 </body>
 </html>
